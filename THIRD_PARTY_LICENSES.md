@@ -1,6 +1,6 @@
 # Third-party licences
 
-WestPlay ships the libraries below: linked into the app and the game plugin (Rust crates), or bundled into
+TruckersTV ships the libraries below: linked into the app and the game plugin (Rust crates), or bundled into
 its pages (npm packages). Each is listed with its licence; the licence texts their packages carry follow,
 each printed once with the libraries it covers. Written for each release by the release tools.
 

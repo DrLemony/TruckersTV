@@ -62,8 +62,8 @@ npm run build:release --prefix ui
 cargo build --release -p westplay-app -p westplay-plugin --features tauri/custom-protocol
 ```
 
-## Credits and license
+## License
 
-TruckersTV is built on [WestPlay](https://github.com/enes-less/WestPlay) by enes-less, and its browser core comes from [Helow19274/WestPlay](https://github.com/Helow19274/WestPlay). Like them it's licensed under the GPL-3.0-or-later: see [LICENSE](LICENSE). The crates keep their `westplay-` names.
+[GPL-3.0-or-later](LICENSE). Euro Truck Simulator 2 is a trademark of SCS Software. TruckersTV isn't affiliated with SCS Software, TruckersMP, Google or the services it opens. Android TV is a trademark of Google, named only to describe the look.
 
-Euro Truck Simulator 2 is a trademark of SCS Software. TruckersTV isn't affiliated with SCS Software, TruckersMP, Google or the services it opens. Android TV is a trademark of Google, named only to describe the look.
+<sub>A modified version of [WestPlay](https://github.com/enes-less/WestPlay) by enes-less, with the browser core of [Helow19274/WestPlay](https://github.com/Helow19274/WestPlay).</sub>

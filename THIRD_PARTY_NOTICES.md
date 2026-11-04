@@ -1,6 +1,6 @@
 # Third-party notices
 
-WestPlay uses or follows the work below. Each notice is reproduced as its licence requires.
+TruckersTV uses or follows the work below. Each notice is reproduced as its licence requires.
 
 ## ts-map
 
