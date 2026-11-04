@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import cabSound from '../../crates/host/src/cab_sound.js?raw'
 import spotify from '../../crates/host/src/spotify.js?raw'
-import youtube from '../../crates/host/src/youtube.js?raw'
 import youtubeMusic from '../../crates/host/src/youtube_music.js?raw'
 
 /**
@@ -10,7 +9,6 @@ import youtubeMusic from '../../crates/host/src/youtube_music.js?raw'
  * player never answers), so each is compiled here, never run.
  */
 const AS_RUN: Record<string, string[]> = {
-  YouTube: [cabSound, youtube],
   'YouTube Music': [cabSound, youtubeMusic],
   Spotify: [cabSound, spotify],
 }

@@ -4,14 +4,13 @@
 //! script in it (`youtube_music.js`) asks YouTube Music's API as its own site does, and plays through the page's
 //! own queue and player bar, as its buttons do.
 //!
-//! It shares the cabin page's WebView2 profile with YouTube (youtube.rs), as a phone's two apps share one
-//! Google account: a sign-in in either is both's. Signing in is Google's own page, in a window on the desktop
-//! (signin.rs); signing out forgets the profile's cookies (both are signed out). Nothing of the account passes
+//! It runs on the cabin page's WebView2 profile. Signing in is Google's own page, in a window on the desktop
+//! (signin.rs); signing out forgets the profile's cookies. Nothing of the account passes
 //! through TruckersTV: what comes out is what the app shows (names, covers, what plays), only the fields below
 //! (anything else the page might say is dropped here), whether it's signed in, and the account's picture (from
 //! Google's image hosts). Nothing of it is kept or logged.
 //!
-//! As YouTube's, the page asks for its songs as a player YouTube serves without ads (`youtube_music.js`), and its
+//! The page asks for its songs as a player YouTube serves without ads (`youtube_music.js`), and its
 //! sound comes from the truck's own speakers (`cab_sound.js`, told the truck's speakers, the driver's head and
 //! the camera by the host).
 
@@ -22,7 +21,6 @@ use std::path::Path;
 use crate::signin::{self, Confirming, Progress, SignInWindow};
 use crate::speakers::{self, Equalizer, Head, Speaker};
 use crate::webview::{self, OffscreenWebView, PageSize, Stage};
-use crate::youtube::{is_token, is_video_id, is_youtube_image, within};
 
 /// YouTube Music's web player.
 pub const HOME: &str = "https://music.youtube.com/";
@@ -861,7 +859,7 @@ impl YouTubeMusic {
             "\n",
             include_str!("consent.js")
         ))?;
-        crate::youtube::answer_consent(&view);
+        answer_consent(&view);
         view.navigate(HOME)?;
         Ok(Self {
             view,
@@ -1132,9 +1130,71 @@ pub fn playback_message(playback: Option<&Playback>) -> String {
     serde_json::json!({ "type": "youtubeMusicPlayback", "playback": playback }).to_string()
 }
 
+/// YouTube's cookie consent ("Before you continue to YouTube", in the EU, the UK and Switzerland: its own page in
+/// YouTube's place, which a hidden player can't get past), answered before YouTube asks, as its Reject all answers
+/// (`SOCS` `CAE=`, as NewPipe answers it). A choice the profile holds already is kept; `CAA…` is YouTube's "not
+/// answered yet" (as yt-dlp reads it), not a choice. YouTube Music's is the same cookie.
+pub fn answer_consent(view: &OffscreenWebView) {
+    let kept = |socs: &str| !socs.starts_with("CAA");
+    if let Err(error) = view.set_cookie_unless("https://www.youtube.com/", ".youtube.com", "SOCS", "CAE=", kept) {
+        log!("YouTube's cookie consent not answered: {error}");
+    }
+}
+
+/// An image on YouTube's own image hosts (thumbnails, channel avatars; Google's, for a player's picture).
+pub(crate) fn is_youtube_image(url: &str) -> bool {
+    [
+        "https://i.ytimg.com/",
+        "https://i9.ytimg.com/",
+        "https://yt3.ggpht.com/",
+        "https://yt3.googleusercontent.com/",
+        "https://lh3.googleusercontent.com/",
+    ]
+    .iter()
+    .any(|host| url.starts_with(host))
+}
+
+/// YouTube's token for more of a list: letters, digits and a few signs, of a sensible length.
+pub(crate) fn is_token(token: &str) -> bool {
+    token.len() <= 4096 && token.bytes().all(|b| b.is_ascii_alphanumeric() || b"-_=%".contains(&b))
+}
+
+/// A rectangle kept within the frame, at least a pixel each way.
+pub(crate) fn within(
+    (frame_width, frame_height): (u32, u32),
+    x: f32,
+    y: f32,
+    width: u32,
+    height: u32,
+) -> (f32, f32, u32, u32) {
+    let x = x.clamp(0.0, frame_width as f32 - 1.0);
+    let y = y.clamp(0.0, frame_height as f32 - 1.0);
+    let width = width.clamp(1, frame_width - x as u32);
+    let height = height.clamp(1, frame_height - y as u32);
+    (x, y, width, height)
+}
+
+/// A YouTube video id: 11 characters of letters, digits, `-` and `_`.
+pub(crate) fn is_video_id(id: &str) -> bool {
+    id.len() == 11 && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn plays_only_what_looks_like_a_video() {
+        assert!(is_video_id("dQw4w9WgXcQ") && is_video_id("1-LpQekNa9g"));
+        assert!(!is_video_id("dQw4w9WgXc") && !is_video_id("dQw4w9WgXcQ'") && !is_video_id("');alert(1)//"));
+    }
+
+    #[test]
+    fn keeps_the_video_on_the_frame() {
+        assert_eq!(within((1280, 720), 0.0, 0.0, 1280, 720), (0.0, 0.0, 1280, 720));
+        assert_eq!(within((1280, 720), 900.0, 600.0, 1280, 720), (900.0, 600.0, 380, 120));
+        assert_eq!(within((1280, 720), -50.0, 0.0, 0, 9999), (0.0, 0.0, 1, 720));
+    }
 
     #[test]
     fn reads_the_cabin_pages_commands() {

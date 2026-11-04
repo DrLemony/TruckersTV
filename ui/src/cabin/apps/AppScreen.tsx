@@ -7,7 +7,6 @@ import { SpotifyApp } from './spotify/SpotifyApp'
 import { isWebAppId } from './store/webApps'
 import { WebAppScreen } from './store/WebAppScreen'
 import { TvApp } from './tv/TvApp'
-import { YouTubeApp } from './youtube/YouTubeApp'
 import { YouTubeMusicApp } from './youtubeMusic/YouTubeMusicApp'
 
 /** An open app, on the whole TV under its bar. */
@@ -27,8 +26,6 @@ function AppContent({ app }: { app: AppId }) {
       return <ChromeApp />
     case 'tv':
       return <TvApp />
-    case 'youtube':
-      return <YouTubeApp />
     case 'spotify':
       return <SpotifyApp />
     case 'youtubeMusic':

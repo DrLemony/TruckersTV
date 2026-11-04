@@ -5,7 +5,7 @@ import { setSiteFull, useSiteFull, useSiteView } from '../chrome/siteView'
 import { webApp, type WebAppId } from './webApps'
 import './store.css'
 
-/** An App Store app, open: its site full screen, like YouTube's, with no address bar. */
+/** An App Store app, open: its site full screen, with no address bar. */
 export function WebAppScreen({ app }: { app: WebAppId }) {
   const site = webApp(app)
   const text = useText()

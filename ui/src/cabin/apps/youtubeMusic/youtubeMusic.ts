@@ -19,8 +19,7 @@ import {
 import type { MediaSource } from '../../../shared/media'
 import { createAsking } from '../asking'
 import { positionOf, type Timed } from '../time'
-import { keptAccount } from '../youtube/account'
-import type { Hole } from '../youtube/youtube'
+import { keptAccount } from './account'
 import { previewAnswer, previewPlay } from './preview'
 
 export { positionOf } from '../time'
@@ -48,6 +47,32 @@ export type {
  * signed in and the account's picture, nothing more; those two are kept (shown at once as TruckersTV
  * starts, replaced as YouTube Music's page says them). Answers are only shown, held for this session.
  */
+
+export interface Hole {
+  x: number
+  y: number
+  width: number
+  height: number
+  radius: number
+}
+
+/**
+ * Calls `place` now, and again whenever where the video goes may have moved: the screen changing (the
+ * OEM strip coming or going, the window resizing) or `element` (where the video shows) changing size (each
+ * at most once a frame, as size changes are told). Returns the function that stops it.
+ */
+export function followArea(place: () => void, element?: Element): () => void {
+  place()
+  const resized = new ResizeObserver(() => place())
+  const area = document.querySelector('.stage')
+  if (area) resized.observe(area)
+  if (element) resized.observe(element)
+  window.addEventListener('resize', place)
+  return () => {
+    resized.disconnect()
+    window.removeEventListener('resize', place)
+  }
+}
 
 export type Question = YouTubeMusicQuestion
 export type Answers = YouTubeMusicAnswers

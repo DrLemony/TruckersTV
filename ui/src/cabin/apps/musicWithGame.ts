@@ -1,6 +1,6 @@
 import { type LiveState, useCabin, useLive } from '../state/store'
 import { fadeOutAndPause, playAndFadeIn } from './fade'
-import { poweredOff, withGame } from './youtube/withGame'
+import { poweredOff, withGame } from './withGame'
 
 /**
  * A music app with the game (YouTube, Spotify, YouTube Music; the rule: youtube/withGame.ts):

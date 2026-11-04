@@ -26,7 +26,6 @@ mod spotify;
 pub mod startup;
 mod typing;
 mod webview;
-mod youtube;
 mod youtube_music;
 
 use std::path::PathBuf;
@@ -81,10 +80,10 @@ pub struct Status {
     /// Whether the truck the player is in is one TruckersTV shows in, as the plugin last saw (`None`: not known yet,
     /// or no game).
     pub truck_supported: Option<bool>,
-    /// Whether YouTube is signed in, as its page last said (`None`: not known, YouTube not run yet), and
+    /// Whether YouTube Music is signed in, as its page last said (`None`: not known, it hasn't run yet), and
     /// whether Google's sign-in window is open. Nothing else of the account.
-    pub youtube_signed_in: Option<bool>,
-    pub youtube_signing_in: bool,
+    pub youtube_music_signed_in: Option<bool>,
+    pub youtube_music_signing_in: bool,
     /// The same of Spotify: signed in or not (`None`: not known, Spotify not run yet), its sign-in window open.
     pub spotify_signed_in: Option<bool>,
     pub spotify_signing_in: bool,
@@ -94,11 +93,11 @@ pub struct Status {
     pub error: Option<String>,
 }
 
-/// The companion window's requests to sign YouTube or Spotify in or out (or to know whether it
+/// The companion window's requests to sign YouTube Music or Spotify in or out (or to know whether it
 /// is), from any thread, for the host to carry out as the cab's apps would.
 #[derive(Debug, Default)]
 pub struct AccountRequests {
-    pub youtube: AccountRequest,
+    pub youtube_music: AccountRequest,
     pub spotify: AccountRequest,
     /// A site app to sign in to, by its id.
     pub site: std::sync::Mutex<Option<String>>,
@@ -150,7 +149,7 @@ pub struct Config {
     pub content: Content,
     /// WebView2 user data (cache, cookies) lives here.
     pub data_dir: PathBuf,
-    /// Signing YouTube or Spotify in or out (or finding out whether it is), from the companion window.
+    /// Signing YouTube Music or Spotify in or out (or finding out whether it is), from the companion window.
     pub accounts: Arc<AccountRequests>,
     /// Called on the host thread about once per second.
     pub on_status: Box<dyn FnMut(&Status) + Send>,
@@ -250,24 +249,10 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
     let mut game_running = false;
     // Whether the player's keyboard types into the page's field, as last told to the page.
     let mut typing_state: Option<westplay_shared::TypingState> = None;
-    // YouTube's player, while the page uses it, and how it last played (sent again when the page reloads).
-    let mut youtube: Option<youtube::YouTube> = None;
-    // Whether the game's camera is outside the cab (YouTube's sound muffled then), and the player's camera
+    // Whether the game's camera is outside the cab (the music muffled then), and the player's camera
     // settings in the game (it turns with the steering).
     let mut camera = camera::Camera::default();
     let mut game_settings = game_settings::GameSettings::new();
-    let mut youtube_message: Option<String> = None;
-    // Whether YouTube's page is signed in (and the picture for it), as last told: sent again to a reloaded
-    // page. Only in memory, never kept.
-    let mut youtube_account_message: Option<String> = None;
-    // Whether YouTube's video was playing at its last report: a video that stops to buffer is logged.
-    let mut youtube_was_playing = false;
-    // The picture not over YouTube's page last logged, and its video: logged as it changes, not every report.
-    let mut youtube_picture: Option<(Option<String>, String)> = None;
-    // Each player's playing, for the log (play_log.rs).
-    let mut youtube_log = play_log::PlayLog::new("youtube");
-    // A video loading too long: the log says why, as the page reads it.
-    let mut youtube_stuck = play_log::Stuck::default();
     let mut spotify_log = play_log::PlayLog::new("spotify");
     let mut youtube_music_log = play_log::PlayLog::new("youtube music");
     // Spotify's web player, while the page uses it, and what it last said (sent again when the page reloads):
@@ -275,11 +260,10 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
     let mut spotify: Option<spotify::Spotify> = None;
     let mut spotify_state: Option<spotify::State> = None;
     let mut spotify_signing_in = false;
-    // Each service's sign-in confirming after its window closed signed in (youtube.rs, spotify.rs).
-    let (mut youtube_window_open, mut youtube_confirming) = (false, false);
+    // Spotify's sign-in confirming after its window closed signed in (spotify.rs).
     let mut spotify_confirming = false;
     let mut spotify_playback: Option<String> = None;
-    // YouTube Music's web player, the same way (on the cabin page's profile, sharing YouTube's sign-in).
+    // YouTube Music's web player, the same way (on the cabin page's profile).
     let mut youtube_music: Option<youtube_music::YouTubeMusic> = None;
     let mut youtube_music_state: Option<youtube_music::State> = None;
     let (mut youtube_music_window_open, mut youtube_music_confirming) = (false, false);
@@ -338,20 +322,14 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
         // TruckersTV's frames go to the truck's screen while the host runs (the page, open or closed, is
         // what shows there).
         host.screen_enabled.store(1, Ordering::Release);
-        // The companion's YouTube and Spotify sign-ins or sign-outs, as the cab's would be (or only
+        // The companion's YouTube Music and Spotify sign-ins or sign-outs, as the cab's would be (or only
         // running it, to know whether it's signed in).
-        if let Some(action) = config.accounts.youtube.take()
-            && let Some(player) = start_youtube(&mut youtube, &stage, &config)
+        if let Some(action) = config.accounts.youtube_music.take()
+            && let Some(player) = start_youtube_music(&mut youtube_music, &stage, &config)
         {
             match action {
-                AccountAction::SignIn => drop(player.command(&youtube::Command::SignIn)),
-                AccountAction::SignOut => {
-                    let _ = player.command(&youtube::Command::SignOut);
-                    // YouTube Music shares the sign-in: its page again, signed out.
-                    if let Some(music) = &youtube_music {
-                        let _ = music.reload();
-                    }
-                }
+                AccountAction::SignIn => drop(player.command(&youtube_music::Command::SignIn)),
+                AccountAction::SignOut => drop(player.command(&youtube_music::Command::SignOut)),
                 AccountAction::Check => {}
             }
         }
@@ -589,9 +567,7 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
                         }
                     }
                     let _ = webview.post_json(&settings_message(&config.settings.get()));
-                    let youtube = youtube_message.iter().chain(&youtube_account_message);
-                    let all = player_messages.iter().chain(youtube);
-                    for message in all {
+                    for message in player_messages.iter() {
                         let _ = webview.post_json(message);
                     }
                 }
@@ -608,25 +584,6 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
                         (config.on_settings)(&settings);
                     }
                 }
-                Some(PageMessage::Youtube { command }) => {
-                    if command == youtube::Command::Close {
-                        if let Some(closing) = youtube.take() {
-                            closing.close(&stage);
-                        }
-                        youtube_message = None;
-                        let _ = webview.post_json(&youtube::state_message(None));
-                    } else if youtube.is_none() && matches!(command, youtube::Command::Hide) {
-                        // Nothing to hide: YouTube isn't running (a page reloading says it anyway).
-                    } else if let Some(player) = start_youtube(&mut youtube, &stage, &config) {
-                        let _ = player.command(&command);
-                        // YouTube Music shares the sign-in: its page again, signed out.
-                        if command == youtube::Command::SignOut
-                            && let Some(music) = &youtube_music
-                        {
-                            let _ = music.reload();
-                        }
-                    }
-                }
                 Some(PageMessage::Spotify { command }) => {
                     if spotify.is_none() && matches!(command, spotify::Command::Pause) {
                         // Nothing to pause: Spotify isn't running.
@@ -639,12 +596,6 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
                         // Nothing to pause: YouTube Music isn't running.
                     } else if let Some(player) = start_youtube_music(&mut youtube_music, &stage, &config) {
                         let _ = player.command(&command);
-                        // YouTube shares the sign-in: its page again, signed out.
-                        if command == youtube_music::Command::SignOut
-                            && let Some(youtube) = &youtube
-                        {
-                            let _ = youtube.reload();
-                        }
                     }
                 }
                 Some(PageMessage::Typing { selection }) => {
@@ -653,100 +604,6 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
                 None => {}
             }
         }
-        // How YouTube's player plays, for the page; its WebView failing closes it (the page opens it again).
-        if let Some(player) = &youtube {
-            if player.failed() || players_closing {
-                if players_closing {
-                    log!("[youtube] closed with the game");
-                } else {
-                    log!("[youtube] its browser failed: closed, the page opens it again");
-                }
-                if let Some(line) = youtube_log.heard(None) {
-                    log!("{line}");
-                }
-                if let Some(failed) = youtube.take() {
-                    failed.close(&stage);
-                }
-                youtube_message = None;
-                let _ = webview.post_json(&youtube::state_message(None));
-            } else {
-                // Every answer, and how the player plays now.
-                let mut state = None;
-                for report in player.take_reports() {
-                    match report {
-                        youtube::Report::Spectrum(bars) => {
-                            let _ = webview.post_json(&speakers::spectrum_message(&bars));
-                        }
-                        youtube::Report::Answer(answer) => {
-                            let _ = webview.post_json(&youtube::answer_message(&answer));
-                        }
-                        youtube::Report::Account(account) => {
-                            let message = youtube::account_message(&account);
-                            let _ = webview.post_json(&message);
-                            youtube_account_message = Some(message);
-                            if status.youtube_signed_in != Some(account.signed_in) {
-                                status.youtube_signed_in = Some(account.signed_in);
-                                (config.on_status)(&status);
-                            }
-                        }
-                        youtube::Report::SignInWindow(open) => {
-                            let _ = webview.post_json(&youtube::sign_in_message(open));
-                            youtube_window_open = open;
-                            status.youtube_signing_in = youtube_window_open || youtube_confirming;
-                            (config.on_status)(&status);
-                        }
-                        youtube::Report::Confirming(confirming) => {
-                            // Signed in in YouTube's window: YouTube Music (the same sign-in) loads again too.
-                            if confirming && let Some(music) = &youtube_music {
-                                let _ = music.reload();
-                            }
-                            youtube_confirming = confirming;
-                            status.youtube_signing_in = youtube_window_open || youtube_confirming;
-                            (config.on_status)(&status);
-                        }
-                        youtube::Report::State(latest) => {
-                            let heard = youtube_heard(&latest);
-                            let loading = heard.doing == play_log::Doing::Loading;
-                            if let Some(line) = youtube_log.heard(Some(heard)) {
-                                log!("{line}");
-                            }
-                            // Still loading a while after it began: why not yet, as the page reads it.
-                            if youtube_stuck.heard(latest.video.as_deref(), loading, Instant::now()) {
-                                let video = latest.video.as_deref().unwrap_or("?");
-                                let why =
-                                    latest.diag.as_ref().map_or("nothing read".to_owned(), |diag| diag.to_string());
-                                log!(
-                                    "[youtube] {video} still loading after {} s: {why}",
-                                    play_log::STUCK_AFTER.as_secs()
-                                );
-                            }
-                            if youtube_was_playing && latest.state == 3 {
-                                let video = latest.video.as_deref().unwrap_or("?");
-                                log!("[youtube] {video} stopped to buffer at {:.1} s", latest.time);
-                            }
-                            youtube_was_playing = latest.state == 1;
-                            // Playing with its picture not over the whole page (players, 2026-10-27: the next
-                            // video small in the top left): what the page has, once a video and look.
-                            if let Some(picture) = &latest.picture {
-                                let seen = (latest.video.clone(), picture.clone());
-                                if youtube_picture.as_ref() != Some(&seen) {
-                                    let video = latest.video.as_deref().unwrap_or("?");
-                                    log!("[youtube] {video}'s picture isn't over the whole page: {picture}");
-                                    youtube_picture = Some(seen);
-                                }
-                            }
-                            state = Some(latest);
-                        }
-                    }
-                }
-                if let Some(state) = state {
-                    let message = youtube::state_message(Some(&state));
-                    let _ = webview.post_json(&message);
-                    youtube_message = Some(message);
-                }
-            }
-        }
-
         // What Spotify's page says (signed in, playing) and its sign-in window, for the page; its WebView
         // failing closes it (the page opens it again).
         if let Some(player) = &spotify {
@@ -845,6 +702,8 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
                 youtube_music_state = None;
                 youtube_music_playback = None;
                 (youtube_music_window_open, youtube_music_confirming) = (false, false);
+                status.youtube_music_signing_in = false;
+                (config.on_status)(&status);
                 let _ = webview.post_json(&youtube_music::state_message(None, false));
                 let _ = webview.post_json(&youtube_music::playback_message(None));
             } else {
@@ -855,9 +714,8 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
                             let _ = webview.post_json(&speakers::spectrum_message(&bars));
                         }
                         youtube_music::Report::State(state) => {
-                            // One sign-in for both: the companion hears it as YouTube's.
-                            if status.youtube_signed_in != Some(state.signed_in) {
-                                status.youtube_signed_in = Some(state.signed_in);
+                            if status.youtube_music_signed_in != Some(state.signed_in) {
+                                status.youtube_music_signed_in = Some(state.signed_in);
                                 (config.on_status)(&status);
                             }
                             youtube_music_state = Some(state);
@@ -865,15 +723,15 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
                         }
                         youtube_music::Report::SignInWindow(open) => {
                             youtube_music_window_open = open;
+                            status.youtube_music_signing_in = youtube_music_window_open || youtube_music_confirming;
+                            (config.on_status)(&status);
                             state_changed = true;
                         }
-                        // The cab shows it signing in until the page here says it's signed in; YouTube (the same
-                        // sign-in) loads again too.
+                        // The cab shows it signing in until the page here says it's signed in.
                         youtube_music::Report::Confirming(confirming) => {
-                            if confirming && let Some(youtube) = &youtube {
-                                let _ = youtube.reload();
-                            }
                             youtube_music_confirming = confirming;
+                            status.youtube_music_signing_in = youtube_music_window_open || youtube_music_confirming;
+                            (config.on_status)(&status);
                             state_changed = true;
                         }
                         // Answers and what plays go straight on to the page (never logged).
@@ -929,7 +787,7 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
             let _ = webview.post_json(&typing::state_message(state));
         }
 
-        // YouTube's, YouTube Music's and Spotify's sound from the truck's own speakers, heard from the
+        // YouTube Music's and Spotify's sound from the truck's own speakers, heard from the
         // driver's head (as last told, every 50 ms); muffled with the camera outside the cab, seen on every pass (as
         // quick as the game's cut).
         if let (Some(truck), Some(telemetry)) = (&last_truck, &last_telemetry) {
@@ -965,9 +823,6 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
                 _ if speakers::by_parts(truck.id.as_str()) => None,
                 _ => speakers::in_truck(truck.id.as_str()),
             };
-            if let Some(player) = &youtube {
-                let _ = player.cab(truck_speakers, head, outside, distance, equalizer, spectrum);
-            }
             if let Some(player) = &youtube_music {
                 let _ = player.cab(truck_speakers, head, outside, distance, equalizer, spectrum);
             }
@@ -1222,19 +1077,6 @@ fn game_shown_message(shown: bool) -> String {
     serde_json::json!({ "type": "gameShown", "shown": shown }).to_string()
 }
 
-/// What YouTube's player does, for the log (play_log.rs), from its state (-1 unstarted, 0 ended, 1 playing,
-/// 2 paused, 3 buffering, 5 cued).
-fn youtube_heard(state: &youtube::State) -> play_log::Heard<'_> {
-    let doing = match state.state {
-        1 => play_log::Doing::Playing,
-        3 | -1 => play_log::Doing::Loading,
-        _ => play_log::Doing::Paused,
-    };
-    play_log::Heard { doing, track: state.video.as_deref(), position: state.time }
-}
-
-/// YouTube, started as it's first needed (on the profile the cabin page's WebView uses), or `None` if it
-/// couldn't start.
 /// The site browser, started if it isn't yet.
 fn start_site_browser<'a>(
     browser: &'a mut Option<site_browser::Browser>,
@@ -1254,25 +1096,7 @@ fn start_site_browser<'a>(
     browser.as_mut()
 }
 
-fn start_youtube<'a>(
-    youtube: &'a mut Option<youtube::YouTube>,
-    stage: &Stage,
-    config: &Config,
-) -> Option<&'a youtube::YouTube> {
-    if youtube.is_none() {
-        let user_data = config.data_dir.join("webview2");
-        match youtube::YouTube::start(stage, config.width, config.height, &user_data) {
-            Ok(started) => {
-                log!("[youtube] opened");
-                *youtube = Some(started)
-            }
-            Err(e) => startup::mark(&format!("host: YouTube couldn't start: {e}")),
-        }
-    }
-    youtube.as_ref()
-}
-
-/// YouTube Music's web player, started as the page first shows it (on the cabin page's profile, as YouTube's:
+/// YouTube Music's web player, started as the page first shows it (on the cabin page's profile:
 /// they share the sign-in), or `None` if it couldn't start.
 fn start_youtube_music<'a>(
     youtube_music: &'a mut Option<youtube_music::YouTubeMusic>,
@@ -1385,8 +1209,6 @@ enum PageMessage {
     Spectrum { on: bool },
     /// Whether what's under the cursor is light (it's drawn dark there: `cursor`).
     CursorLight { light: bool },
-    /// A command for YouTube's player (`youtube`): what to play, where it shows, and so on.
-    Youtube { command: youtube::Command },
     /// A command for Spotify's web player (`spotify`): its sign-in, a question, its controls.
     Spotify { command: spotify::Command },
     /// A command for YouTube Music's web player (`youtubeMusic`): its sign-in, a question, its controls.
@@ -1500,10 +1322,6 @@ mod tests {
             parse_page_message(r#"{"type":"typing","selection":3}"#),
             Some(PageMessage::Typing { selection: 3 })
         );
-        assert_eq!(
-            parse_page_message(r#"{"type":"youtube","command":{"action":"pause"}}"#),
-            Some(PageMessage::Youtube { command: crate::youtube::Command::Pause })
-        );
         assert_eq!(parse_page_message(r#"{"type":"other"}"#), None);
         assert_eq!(parse_page_message("not json"), None);
     }
@@ -1551,18 +1369,18 @@ mod tests {
     fn passes_on_the_companions_sign_ins_once() {
         use super::{AccountAction, AccountRequests};
         let requests = AccountRequests::default();
-        assert_eq!(requests.youtube.take(), None);
-        requests.youtube.request(AccountAction::SignOut);
-        requests.youtube.request(AccountAction::SignIn);
+        assert_eq!(requests.youtube_music.take(), None);
+        requests.youtube_music.request(AccountAction::SignOut);
+        requests.youtube_music.request(AccountAction::SignIn);
         requests.spotify.request(AccountAction::Check);
-        assert_eq!(requests.youtube.take(), Some(AccountAction::SignIn));
-        assert_eq!(requests.youtube.take(), None);
+        assert_eq!(requests.youtube_music.take(), Some(AccountAction::SignIn));
+        assert_eq!(requests.youtube_music.take(), None);
         assert_eq!(requests.spotify.take(), Some(AccountAction::Check));
         assert_eq!(requests.spotify.take(), None);
-        // The companion hears whether YouTube is signed in, and nothing more of the account.
-        let status = super::Status { youtube_signed_in: Some(true), youtube_signing_in: false, ..Default::default() };
+        // The companion hears whether YouTube Music is signed in, and nothing more of the account.
+        let status = super::Status { youtube_music_signed_in: Some(true), youtube_music_signing_in: false, ..Default::default() };
         let json = serde_json::to_value(&status).unwrap();
-        assert_eq!((json["youtubeSignedIn"].as_bool(), json["youtubeSigningIn"].as_bool()), (Some(true), Some(false)));
+        assert_eq!((json["youtubeMusicSignedIn"].as_bool(), json["youtubeMusicSigningIn"].as_bool()), (Some(true), Some(false)));
         let status = super::Status { spotify_signed_in: Some(false), spotify_signing_in: true, ..Default::default() };
         let json = serde_json::to_value(&status).unwrap();
         assert_eq!((json["spotifySignedIn"].as_bool(), json["spotifySigningIn"].as_bool()), (Some(false), Some(true)));

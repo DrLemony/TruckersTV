@@ -26,8 +26,8 @@ import {
   spotifySignIn,
   spotifySignOut,
   useHostStatus,
-  youtubeSignIn,
-  youtubeSignOut,
+  youtubeMusicSignIn,
+  youtubeMusicSignOut,
 } from './useHostStatus'
 import { type Binding, DEFAULT_KEY, KEYBIND_IDS, type KeybindId, SENSITIVITY, useSettings } from './useSettings'
 import { type Words, wordsFor } from './words'
@@ -335,11 +335,11 @@ const SERVICES: {
   signingIn(status: HostStatus | null): boolean
 }[] = [
   {
-    id: 'youtube',
-    name: 'YouTube',
-    signIn: youtubeSignIn,
-    signOut: youtubeSignOut,
-    signingIn: (status) => status?.youtubeSigningIn ?? false,
+    id: 'youtubeMusic',
+    name: 'YouTube Music',
+    signIn: youtubeMusicSignIn,
+    signOut: youtubeMusicSignOut,
+    signingIn: (status) => status?.youtubeMusicSigningIn ?? false,
   },
   {
     id: 'spotify',

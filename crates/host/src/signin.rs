@@ -93,7 +93,8 @@ const fn site(title: &'static str, sign_in: &'static str, host: &'static str, st
 }
 
 /// The site apps' sign-ins, by their ids (ui/src/cabin/apps/store/webApps.ts).
-static SITES: [(&str, Site); 6] = [
+static SITES: [(&str, Site); 7] = [
+    ("youtube", site("Sign in to YouTube - TruckersTV", YOUTUBE.sign_in, "youtube.com", "signin")),
     ("exxen", site("Sign in to Exxen - TruckersTV", "https://www.exxen.com/tr/giris-yap", "exxen.com", "giris")),
     ("netflix", site("Sign in to Netflix - TruckersTV", "https://www.netflix.com/login", "netflix.com", "login")),
     ("disney", site("Sign in to Disney+ - TruckersTV", "https://www.disneyplus.com/login", "disneyplus.com", "login")),
@@ -548,7 +549,7 @@ mod tests {
     #[test]
     fn knows_the_site_apps_sign_ins_only() {
         assert!(site_of("netflix").is_some_and(|site| site.sign_in.starts_with("https://")));
-        assert!(site_of("youtube").is_none());
+        assert!(site_of("spotify").is_none());
     }
 
     #[test]

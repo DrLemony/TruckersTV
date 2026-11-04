@@ -53,22 +53,22 @@ fn site_sign_in(app: String, accounts: State<Accounts>) {
     }
 }
 
-/// Opens Google's sign-in for YouTube in a window on the desktop (the status then says when it's done).
+/// Opens Google's sign-in for YouTube Music in a window on the desktop (the status then says when it's done).
 #[tauri::command]
-fn youtube_sign_in(accounts: State<Accounts>) {
-    accounts.0.youtube.request(AccountAction::SignIn);
+fn youtube_music_sign_in(accounts: State<Accounts>) {
+    accounts.0.youtube_music.request(AccountAction::SignIn);
 }
 
-/// Signs YouTube out.
+/// Signs YouTube Music out.
 #[tauri::command]
-fn youtube_sign_out(accounts: State<Accounts>) {
-    accounts.0.youtube.request(AccountAction::SignOut);
+fn youtube_music_sign_out(accounts: State<Accounts>) {
+    accounts.0.youtube_music.request(AccountAction::SignOut);
 }
 
-/// Runs YouTube (hidden), so the status says whether it's signed in.
+/// Runs YouTube Music (hidden), so the status says whether it's signed in.
 #[tauri::command]
-fn youtube_check(accounts: State<Accounts>) {
-    accounts.0.youtube.request(AccountAction::Check);
+fn youtube_music_check(accounts: State<Accounts>) {
+    accounts.0.youtube_music.request(AccountAction::Check);
 }
 
 /// Opens Spotify's sign-in in a window on the desktop (the status then says when it's done).
@@ -131,9 +131,9 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             companion_ready,
             site_sign_in,
-            youtube_sign_in,
-            youtube_sign_out,
-            youtube_check,
+            youtube_music_sign_in,
+            youtube_music_sign_out,
+            youtube_music_check,
             spotify_sign_in,
             spotify_sign_out,
             spotify_check,

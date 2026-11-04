@@ -3,7 +3,7 @@
  * the button is held, and glides on when let go (or settles on its nearest snap point, as Home's pages do).
  * One handler for the whole page: whatever scrolls, scrolls this way.
  *
- * A drag goes to the nearest list that scrolls the way it goes (sideways on YouTube's chips moves the chips;
+ * A drag goes to the nearest list that scrolls the way it goes (sideways on YouTube Music's chips moves the chips;
  * up or down there moves the list they're in). What it's let go over isn't clicked. Controls that handle a
  * drag of their own (sliders, the player's bar, the keyboard) are left alone.
  */
@@ -19,7 +19,7 @@ export const GLIDE_STOP = 0.02
 export const SPEED_WINDOW = 80
 
 /** Not dragged to scroll: controls with a drag of their own. */
-const OWN_DRAG = '[role="slider"], input, textarea, select, .yt-bar, .keyboard, [data-own-drag]'
+const OWN_DRAG = '[role="slider"], input, textarea, select, .keyboard, [data-own-drag]'
 
 export type Axis = 'x' | 'y'
 

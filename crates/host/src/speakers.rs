@@ -1,5 +1,5 @@
 //! The truck's own speakers: where each sits in its cab and what part of the sound it plays, for YouTube's
-//! sound to come from them, around the driver's head (youtube.js plays it so).
+//! sound to come from them, around the driver's head (cab_sound.js plays it so).
 //!
 //! The game knows nothing of speakers: no truck definition names them and its interior models mark none, so
 //! each truck's are placed here by hand, in the SDK's cab space (the head's: metres, x right, y up, z back,

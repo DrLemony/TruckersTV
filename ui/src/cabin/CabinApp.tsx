@@ -4,7 +4,6 @@ import { keybinds } from './apps/keybinds'
 import { oneAtATime } from './apps/oneAtATime'
 import { pauseSpotifyWithGame, spotifyPlayer } from './apps/spotify/pauseWithGame'
 import { pauseTvWithGame, tvPlayer } from './apps/tv/player'
-import { pauseYouTubeWithGame, youtubePlayer } from './apps/youtube/pauseWithGame'
 import { pauseYouTubeMusicWithGame, youtubeMusicPlayer } from './apps/youtubeMusic/pauseWithGame'
 import { AppScreen } from './apps/AppScreen'
 import { BootScreen } from './boot/BootScreen'
@@ -28,13 +27,12 @@ export function CabinApp() {
   const route = useCabin((state) => state.navigation.route)
   const phase = useCabin((state) => state.power.phase)
   useEffect(() => connectHost(), [])
-  // YouTube, Spotify, YouTube Music and TV pause with the game (its menu, tabbing out) and play on after.
-  useEffect(() => pauseYouTubeWithGame(), [])
+  // Spotify, YouTube Music and TV pause with the game (its menu, tabbing out) and play on after.
   useEffect(() => pauseSpotifyWithGame(), [])
   useEffect(() => pauseYouTubeMusicWithGame(), [])
   useEffect(() => pauseTvWithGame(), [])
   // One of them at a time: the newest to start plays on, the others pause (apps/oneAtATime.ts).
-  useEffect(() => oneAtATime([youtubePlayer, spotifyPlayer, youtubeMusicPlayer, tvPlayer]), [])
+  useEffect(() => oneAtATime([spotifyPlayer, youtubeMusicPlayer, tvPlayer]), [])
   // The player's keybinds pressed in the game: the music's volume, or play/pause (apps/keybinds.ts).
   useEffect(() => followKeybinds(), [])
   // The page's own frames while the game runs, for the host's performance line (state/frameMeter.ts).
@@ -72,7 +70,7 @@ export function CabinApp() {
 /** Acts on each keybind pressed in the game, for the cab's players, showing a volume it sets. Returns the
  * function that stops it. */
 function followKeybinds(): () => void {
-  const binds = keybinds([youtubePlayer, spotifyPlayer, youtubeMusicPlayer])
+  const binds = keybinds([spotifyPlayer, youtubeMusicPlayer])
   const stop = useLive.subscribe((live, before) => {
     if (!live.keybind || live.keybind.count === before.keybind?.count) return
     const shown = binds.press(live.keybind.action)

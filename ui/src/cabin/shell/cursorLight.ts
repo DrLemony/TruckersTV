@@ -3,7 +3,7 @@ import { goesLight, luminance, pictureAt } from './contrast'
 /**
  * Whether the cursor is over something light, so it goes dark (over light
  * covers): a picture by its own pixels where it points (a cover, the wallpaper), anything else by the first solid
- * background under it; YouTube's full-screen player as dark. A video elsewhere or the map (drawn where the page
+ * background under it. A video elsewhere or the map (drawn where the page
  * can't read) says nothing: the cursor stays as it was.
  */
 
@@ -21,10 +21,6 @@ export function solidLuminance(color: string): number | null {
 /** How light the page is at `x, y` (0 dark, 1 light); `null` if it can't be told there. */
 export function lightAt(x: number, y: number): number | null {
   for (const element of document.elementsFromPoint(x, y)) {
-    // YouTube's player, full screen: dark, as its own white controls take it to be, whatever the video. Its
-    // cover (the thumbnail dimmed on black, while a video loads) can't be read, and the cursor kept the
-    // dark it took from the light thumbnail that opened it.
-    if (element.closest('.yt-player')) return 0
     if (element instanceof HTMLImageElement) return pictureAt(element, x, y)
     if (element instanceof HTMLVideoElement || element instanceof HTMLCanvasElement) return null
     const seen = solidLuminance(getComputedStyle(element).backgroundColor)

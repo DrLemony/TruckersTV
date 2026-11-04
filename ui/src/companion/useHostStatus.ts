@@ -14,10 +14,10 @@ export interface HostStatus {
   screenDrawing: boolean
   /** Whether the truck the player is in is one TruckersTV shows in, as the plugin last saw (`null`: not known yet). */
   truckSupported: boolean | null
-  /** Whether YouTube is signed in (`null`: not known yet: YouTube hasn't run), and whether Google's sign-in
+  /** Whether YouTube Music is signed in (`null`: not known yet: it hasn't run), and whether Google's sign-in
    * window is open. Nothing else of the account. */
-  youtubeSignedIn: boolean | null
-  youtubeSigningIn: boolean
+  youtubeMusicSignedIn: boolean | null
+  youtubeMusicSigningIn: boolean
   /** The site app whose sign-in window is open, by its id, and those signed in. */
   siteSigningIn: string | null
   siteSignedIn: string[]
@@ -41,19 +41,19 @@ export function siteSignIn(app: string): Promise<void> {
   return call('site_sign_in', { app })
 }
 
-/** Opens Google's sign-in for YouTube in a window on the desktop. */
-export function youtubeSignIn(): Promise<void> {
-  return call('youtube_sign_in')
+/** Opens Google's sign-in for YouTube Music in a window on the desktop. */
+export function youtubeMusicSignIn(): Promise<void> {
+  return call('youtube_music_sign_in')
 }
 
-/** Signs YouTube out. */
-export function youtubeSignOut(): Promise<void> {
-  return call('youtube_sign_out')
+/** Signs YouTube Music out. */
+export function youtubeMusicSignOut(): Promise<void> {
+  return call('youtube_music_sign_out')
 }
 
-/** Runs YouTube (hidden), so the status says whether it's signed in. */
-export function youtubeCheck(): Promise<void> {
-  return call('youtube_check')
+/** Runs YouTube Music (hidden), so the status says whether it's signed in. */
+export function youtubeMusicCheck(): Promise<void> {
+  return call('youtube_music_check')
 }
 
 /** Opens Spotify's sign-in in a window on the desktop. */

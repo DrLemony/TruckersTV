@@ -127,10 +127,6 @@ export type HostMessage =
   | { type: 'typingState'; state: TypingState }
   /** The game's language. */
   | { type: 'gameLanguage'; language: string | null }
-  /** How YouTube's player plays (`null`: YouTube isn't running). */
-  | { type: 'youtube'; state: YouTubeState | null }
-  /** YouTube's answer to the page's question `id` (a `youtube` command with an `id`). */
-  | ({ type: 'youtubeAnswer'; id: number } & YouTubeAnswer)
   /** Whether the game's window shows (`false`: minimised, or on another desktop; in front or not: Lossless
    * Scaling's window is in front of it). */
   | { type: 'gameShown'; shown: boolean }
@@ -141,10 +137,6 @@ export type HostMessage =
   /** Whether the game runs. As it closes, the host closes the web players; the page powers off and forgets
    * its last telemetry. */
   | { type: 'game'; running: boolean }
-  /** Whether YouTube is signed in, and the picture to show for the player: nothing else of the account. */
-  | { type: 'youtubeAccount'; signedIn: boolean; avatar: string | null }
-  /** Whether Google's sign-in window is open on the PC's desktop. */
-  | { type: 'youtubeSignIn'; open: boolean }
   /** Spotify's web player: whether it's signed in and playing (`null`: not running), and whether its sign-in
    * window is open on the PC's desktop. Nothing else of the account. */
   | { type: 'spotify'; signedIn: boolean | null; playing: boolean | null; signingIn: boolean }
@@ -153,7 +145,7 @@ export type HostMessage =
   /** What Spotify plays (on TruckersTV, or elsewhere on the account through Spotify Connect); `null`: nothing. */
   | { type: 'spotifyPlayback'; playback: SpotifyPlayback | null }
   /** YouTube Music's web player: whether it's signed in and playing (`null`: not running), whether its sign-in
-   * window is open on the PC, and the account's picture (Google's). YouTube's sign-in: they share it. */
+   * window is open on the PC, and the account's picture (Google's). */
   | {
       type: 'youtubeMusic'
       signedIn: boolean | null
@@ -208,8 +200,6 @@ export type PageMessage =
   /** The text field selected, a number that changes with every selection (0: none), for the player's own
    * keyboard to type into while the truck stands still. */
   | { type: 'typing'; selection: number }
-  /** A command for YouTube's player, or a question for YouTube (answered with `youtubeAnswer`). */
-  | { type: 'youtube'; command: YouTubeCommand }
   /** A command for Spotify's web player (`westplay_host::spotify::Command`): `show` places it, in the frame's
    * pixels, where the Spotify app cuts the page open. */
   | { type: 'spotify'; command: SpotifyCommand }
@@ -403,7 +393,7 @@ export interface Lyrics {
 }
 
 /** What the YouTube Music app asks of YouTube Music's web player (`westplay_host::youtube_music::Command`), run
- * hidden by the host: its sign-in (Google's, YouTube's own: they share it), a question (answered with
+ * hidden by the host: its sign-in (Google's), a question (answered with
  * `youtubeMusicAnswer` and the same `id`), the language it answers in, and the player's controls (`play` with
  * `watch` plays it; without, it plays on). */
 export type YouTubeMusicCommand =
@@ -607,122 +597,6 @@ export interface YouTubeMusicPlayback {
   index: number
   from: string
   ad: boolean
-}
-
-/** What the YouTube app asks of YouTube's player (hidden, under the page) or of YouTube (`westplay_host::
- * youtube::Command`). `show` places the video, in the frame's pixels. */
-export type YouTubeCommand =
-  | { action: 'load'; video: string; start?: number }
-  | { action: 'play' }
-  | { action: 'pause' }
-  | { action: 'seek'; seconds: number }
-  | { action: 'volume'; percent: number }
-  | { action: 'captions'; track: string | null }
-  | { action: 'quality'; quality: string }
-  | { action: 'rate'; rate: number }
-  | { action: 'audioTrack'; id: string }
-  | { action: 'stableVolume'; on: boolean }
-  | { action: 'voiceBoost'; on: boolean }
-  | { action: 'show'; x: number; y: number; width: number; height: number; crop?: boolean }
-  | { action: 'hide' }
-  | { action: 'close' }
-  | { action: 'language'; code: string }
-  | { action: 'search'; id: number; query: string; more?: string; filter?: 'channels' | 'playlists' }
-  | { action: 'playlist'; id: number; playlist: string; more?: string }
-  | { action: 'channel'; id: number; channel: string; more?: string }
-  | { action: 'subscribe'; id: number; channel: string; on: boolean }
-  | { action: 'suggest'; id: number; query: string }
-  | { action: 'related'; id: number; video: string }
-  | { action: 'feed'; id: number; which: 'home' | 'subscriptions'; more?: string }
-  | { action: 'signIn' }
-  | { action: 'signOut' }
-
-/** How YouTube's player plays. `state`: -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued. */
-export interface YouTubeState {
-  video: string | null
-  title: string
-  author: string
-  live: boolean
-  state: number
-  /** Seconds. */
-  time: number
-  duration: number
-  volume: number
-  ad: boolean
-  /** The video's captions (YouTube's id for each: `.en`, `a.en` automatic) and the one shown (`null`: none). */
-  captions: { track: string; name: string }[]
-  caption: string | null
-  /** The qualities the video has, best first (`hd1080`, "1080p60"); the one chosen (`auto`: YouTube's own
-   * choice), and the one playing ("720p"). */
-  qualities: { quality: string; label: string }[]
-  quality: string
-  qualityLabel: string
-  /** The speeds it can play at and the one it plays at; its audio tracks (none: only its own) and the one
-   * playing; YouTube's Stable volume and Voice boost (`null`: the video doesn't offer it). */
-  rates: number[]
-  rate: number
-  audioTracks: { id: string; name: string; original: boolean }[]
-  audioTrack: string | null
-  stableVolume: boolean | null
-  voiceBoost: boolean | null
-}
-
-/** A video as the YouTube app lists it; its texts are YouTube's own, in the cabin's language. */
-export interface YouTubeVideo {
-  video: string
-  title: string
-  channel: string
-  avatar: string | null
-  thumbnail: string | null
-  /** "13:34"; empty for a live video. */
-  duration: string
-  /** "17K", "14 Mn" */
-  views: string
-  /** "2 days ago" */
-  age: string
-  live: boolean
-  /** Its channel's id, to open the channel (absent: not known). */
-  channelId?: string
-}
-
-/** A channel; its texts are YouTube's ("@LofiGirl", "15.8M subscribers", "468 videos"). */
-export interface YouTubeChannel {
-  channel: string
-  name: string
-  avatar: string | null
-  banner: string | null
-  handle: string
-  subscribers: string
-  videos: string
-  /** Whether the signed-in player is subscribed (`null`: not signed in, or not known). */
-  subscribed?: boolean | null
-}
-
-/** A playlist; its texts are YouTube's ("13 videos", "2M views"). In a search, `after`: how many of the
- * search's videos come before it. */
-export interface YouTubePlaylist {
-  playlist: string
-  title: string
-  channel: string
-  channelId?: string
-  thumbnail: string | null
-  count: string
-  views: string
-  after: number
-}
-
-/** YouTube's answer: videos (and the token for more), suggestions, or that it didn't answer. */
-export interface YouTubeAnswer {
-  videos?: YouTubeVideo[]
-  more?: string | null
-  suggestions?: string[]
-  /** Channels a search found; the channel a channel's page is. */
-  channels?: YouTubeChannel[]
-  channel?: YouTubeChannel | null
-  /** Playlists a search found; the playlist a playlist's page is. */
-  playlists?: YouTubePlaylist[]
-  playlist?: YouTubePlaylist | null
-  failed?: boolean
 }
 
 /** Text typed, or a key with a meaning of its own. */

@@ -65,10 +65,10 @@ function Disc({ app, style }: { app: AppId; style?: CSSProperties }) {
   const role = APP_ICONS[app]
   return (
     <span className="tv-disc" style={{ ...lookOf(app), ...style }}>
-      {isWebAppId(app) ? (
-        <WebAppIcon app={webApp(app)} className={FILLS_DISC.has(app) ? 'tv-disc-icon web fills' : 'tv-disc-icon web'} />
+      {role ? (
+        <img src={appIcon(role)} alt="" className="tv-disc-icon" />
       ) : (
-        role && <img src={appIcon(role)} alt="" className="tv-disc-icon" />
+        isWebAppId(app) && <WebAppIcon app={webApp(app)} className={FILLS_DISC.has(app) ? 'tv-disc-icon web fills' : 'tv-disc-icon web'} />
       )}
     </span>
   )

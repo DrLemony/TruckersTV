@@ -1,7 +1,5 @@
 import '@fontsource-variable/instrument-sans'
 import '@fontsource-variable/inter'
-// The YouTube app's type, as YouTube's own.
-import '@fontsource-variable/roboto'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { CabinApp } from './CabinApp'

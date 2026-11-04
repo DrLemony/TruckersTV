@@ -19,7 +19,6 @@ import {
   receivePlayback,
   receiveState as receiveSpotifyState,
 } from '../apps/spotify/spotify'
-import { receiveAnswer, receiveState, useYouTube } from '../apps/youtube/youtube'
 import {
   receiveAnswer as receiveYouTubeMusicAnswer,
   receivePlayback as receiveYouTubeMusicPlayback,
@@ -206,9 +205,6 @@ function receiveHostMessage(now: () => number): (message: HostMessage) => void {
       case 'cursor':
         useLive.setState({ cursorByHost: message.host })
         break
-      case 'youtube':
-        receiveState(message.state)
-        break
       case 'gameShown':
         useLive.setState({ gameShown: message.shown })
         break
@@ -225,12 +221,6 @@ function receiveHostMessage(now: () => number): (message: HostMessage) => void {
           useLive.setState({ telemetry: null })
           useCabin.getState().powerEvent({ type: 'electrics', on: false, at: now() })
         }
-        break
-      case 'youtubeAccount':
-        useYouTube.setState({ account: { signedIn: message.signedIn, avatar: message.avatar } })
-        break
-      case 'youtubeSignIn':
-        useYouTube.setState({ signingIn: message.open })
         break
       case 'spotify':
         receiveSpotifyState(message.signedIn, message.playing, message.signingIn)
@@ -250,11 +240,6 @@ function receiveHostMessage(now: () => number): (message: HostMessage) => void {
       case 'youtubeMusicPlayback':
         receiveYouTubeMusicPlayback(message.playback)
         break
-      case 'youtubeAnswer': {
-        const { type: _, id, ...answer } = message
-        receiveAnswer(id, answer)
-        break
-      }
     }
   }
 }

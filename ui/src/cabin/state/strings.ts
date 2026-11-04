@@ -45,55 +45,6 @@ export interface Strings {
   playing: string
   /** The YouTube app: the search field's hint, Home's sections and chips (each a search), what a list says
    * when it's empty or YouTube didn't answer, the live badge, and the player's words. */
-  youtube: {
-    search: string
-    continueWatching: string
-    recentSearches: string
-    chips: readonly { label: string; query: string }[]
-    start: string
-    noResults: string
-    failed: string
-    tryAgain: string
-    live: string
-    upNext: string
-    nowPlaying: string
-    back: string
-    volume: string
-    forget: string
-    fill: string
-    clear: string
-    fullScreen: string
-    signIn: string
-    signOut: string
-    /** A search's results: all of them, or channels only. */
-    all: string
-    channels: string
-    subscribe: string
-    subscribed: string
-    /** Playlists: a search's filter, the word under one found, and its page's button. */
-    playlists: string
-    playlist: string
-    playAll: string
-    /** The player's captions and quality, and their choices for none and YouTube's own. */
-    captions: string
-    off: string
-    quality: string
-    auto: string
-    /** The player's gear: its settings, and in them the speed (and its 1×), the audio track (dubbed ones),
-     * YouTube's Stable volume and Voice boost. */
-    settings: string
-    playbackSpeed: string
-    normal: string
-    audioTrack: string
-    stableVolume: string
-    voiceBoost: string
-    home: string
-    subscriptions: string
-    /** While Google's sign-in window is open on the PC. */
-    finishOnPc: string
-    /** Double-tapping a side of the player: "10 seconds". */
-    seconds: (seconds: number) => string
-  }
   /** The Spotify app, in Spotify's own words: while its sign-in window is open on the PC; its tabs and the
    * search pill's hint; Home's filters; what things are ("Playlist • Spotify"); the pages' words; Now
    * Playing's; and the toasts of adding to Liked Songs or Your Library. */
@@ -393,54 +344,6 @@ export const STRINGS: Record<Language, Strings> = {
     shuffle: 'Shuffle',
     repeat: 'Repeat',
     playing: 'Playing',
-    youtube: {
-      search: 'Search YouTube',
-      continueWatching: 'Continue watching',
-      recentSearches: 'Recent searches',
-      chips: [
-        { label: 'Trucking', query: 'trucking' },
-        { label: 'Music', query: 'music' },
-        { label: 'Podcasts', query: 'podcast' },
-        { label: 'Gaming', query: 'gaming' },
-        { label: 'Live', query: 'live' },
-      ],
-      start: 'What would you like to watch? Search, or pick one above.',
-      noResults: 'No results',
-      failed: "YouTube didn't answer.",
-      tryAgain: 'Try again',
-      live: 'LIVE',
-      upNext: 'Up next',
-      nowPlaying: 'Now playing',
-      back: 'Back',
-      volume: 'Volume',
-      forget: 'Remove',
-      fill: 'Put in the box',
-      clear: 'Clear',
-      fullScreen: 'Full screen',
-      signIn: 'Sign in',
-      signOut: 'Sign out',
-      all: 'All',
-      channels: 'Channels',
-      subscribe: 'Subscribe',
-      subscribed: 'Subscribed',
-      playlists: 'Playlists',
-      playlist: 'Playlist',
-      playAll: 'Play all',
-      captions: 'Captions',
-      off: 'Off',
-      quality: 'Quality',
-      auto: 'Auto',
-      settings: 'Settings',
-      playbackSpeed: 'Playback speed',
-      normal: 'Normal',
-      audioTrack: 'Audio track',
-      stableVolume: 'Stable volume',
-      voiceBoost: 'Voice boost',
-      home: 'Home',
-      subscriptions: 'Subscriptions',
-      finishOnPc: 'Finish signing in on your PC: Google’s sign-in is open in a window on your desktop.',
-      seconds: (seconds) => `${seconds} seconds`,
-    },
     spotify: {
       podcasts: 'Podcasts & Shows',
       finishOnPc: 'Finish signing in on your PC: Spotify’s sign-in is open in a window on your desktop.',
@@ -752,54 +655,6 @@ export const STRINGS: Record<Language, Strings> = {
     shuffle: 'Karıştır',
     repeat: 'Tekrarla',
     playing: 'Çalıyor',
-    youtube: {
-      search: 'YouTube’da ara',
-      continueWatching: 'İzlemeye devam et',
-      recentSearches: 'Son aramalar',
-      chips: [
-        { label: 'Tır', query: 'tır yolculuğu' },
-        { label: 'Müzik', query: 'müzik' },
-        { label: 'Podcast', query: 'podcast' },
-        { label: 'Oyun', query: 'oyun' },
-        { label: 'Canlı', query: 'canlı yayın' },
-      ],
-      start: 'Ne izlemek istersiniz? Arayın ya da yukarıdan seçin.',
-      noResults: 'Sonuç yok',
-      failed: 'YouTube yanıt vermedi.',
-      tryAgain: 'Tekrar dene',
-      live: 'CANLI',
-      upNext: 'Sıradaki',
-      nowPlaying: 'Şimdi oynatılıyor',
-      back: 'Geri',
-      volume: 'Ses',
-      forget: 'Kaldır',
-      fill: 'Kutuya koy',
-      clear: 'Temizle',
-      fullScreen: 'Tam ekran',
-      signIn: 'Oturum aç',
-      signOut: 'Oturumu kapat',
-      all: 'Tümü',
-      channels: 'Kanallar',
-      subscribe: 'Abone ol',
-      subscribed: 'Abone olundu',
-      playlists: 'Oynatma listeleri',
-      playlist: 'Oynatma listesi',
-      playAll: 'Tümünü oynat',
-      captions: 'Altyazılar',
-      off: 'Kapalı',
-      quality: 'Kalite',
-      auto: 'Otomatik',
-      settings: 'Ayarlar',
-      playbackSpeed: 'Oynatma hızı',
-      normal: 'Normal',
-      audioTrack: 'Ses parçası',
-      stableVolume: 'Sabit ses seviyesi',
-      voiceBoost: 'Ses güçlendirme',
-      home: 'Ana Sayfa',
-      subscriptions: 'Abonelikler',
-      finishOnPc: 'Oturum açmayı bilgisayarınızda tamamlayın: Google’ın oturum açma penceresi masaüstünüzde açık.',
-      seconds: (seconds) => `${seconds} saniye`,
-    },
     spotify: {
       podcasts: 'Podcast’ler ve Programlar',
       finishOnPc: 'Oturum açmayı bilgisayarınızda tamamlayın: Spotify’ın oturum açma penceresi masaüstünüzde açık.',

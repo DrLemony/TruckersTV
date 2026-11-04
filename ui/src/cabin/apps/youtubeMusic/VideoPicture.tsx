@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { isInHost } from '../../../shared/host'
-import { followArea } from '../youtube/youtube'
-import { youtubeMusic, useYouTubeMusic } from './youtubeMusic'
+import { followArea, youtubeMusic, useYouTubeMusic } from './youtubeMusic'
 
 /**
  * The music video's picture, in Now Playing (its Video side): YouTube Music's own, placed under the page by the

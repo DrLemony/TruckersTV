@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { type HostStatus, spotifyCheck, youtubeCheck } from './useHostStatus'
+import { type HostStatus, spotifyCheck, youtubeMusicCheck } from './useHostStatus'
 
 /**
  * Whether each service is signed in, as the companion last knew: shown at once when it opens, kept up to date
@@ -8,13 +8,13 @@ import { type HostStatus, spotifyCheck, youtubeCheck } from './useHostStatus'
  * never known is asked once, as the companion opens: run hidden to say.
  */
 export interface SignedIn {
-  youtube: boolean | null
+  youtubeMusic: boolean | null
   spotify: boolean | null
 }
 
 export type Service = keyof SignedIn
 
-const SERVICES: Service[] = ['youtube', 'spotify']
+const SERVICES: Service[] = ['youtubeMusic', 'spotify']
 
 const KEY = 'westplay.companion.signedIn'
 
@@ -26,7 +26,7 @@ function kept(): SignedIn {
     // Nothing kept: each is asked.
   }
   const known = (service: Service) => (typeof value?.[service] === 'boolean' ? (value[service] as boolean) : null)
-  return { youtube: known('youtube'), spotify: known('spotify') }
+  return { youtubeMusic: known('youtubeMusic'), spotify: known('spotify') }
 }
 
 function keep(value: SignedIn) {
@@ -41,21 +41,21 @@ function keep(value: SignedIn) {
 export function useSignedIn(status: HostStatus | null): SignedIn {
   const [known] = useState(kept)
   const now: SignedIn = {
-    youtube: status?.youtubeSignedIn ?? null,
+    youtubeMusic: status?.youtubeMusicSignedIn ?? null,
     spotify: status?.spotifySignedIn ?? null,
   }
   useEffect(() => {
     if (SERVICES.every((service) => now[service] === null)) return
     const before = kept()
     keep({
-      youtube: now.youtube ?? before.youtube,
+      youtubeMusic: now.youtubeMusic ?? before.youtubeMusic,
       spotify: now.spotify ?? before.spotify,
     })
     // Keyed by the answers (`now` itself is new at every render).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [now.youtube, now.spotify])
+  }, [now.youtubeMusic, now.spotify])
   return {
-    youtube: now.youtube ?? known.youtube,
+    youtubeMusic: now.youtubeMusic ?? known.youtubeMusic,
     spotify: now.spotify ?? known.spotify,
   }
 }
@@ -64,7 +64,7 @@ export function useSignedIn(status: HostStatus | null): SignedIn {
 export function useAskOnce(): void {
   useEffect(() => {
     const known = kept()
-    if (known.youtube === null) youtubeCheck().catch(() => {})
+    if (known.youtubeMusic === null) youtubeMusicCheck().catch(() => {})
     if (known.spotify === null) spotifyCheck().catch(() => {})
   }, [])
 }

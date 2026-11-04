@@ -5,7 +5,7 @@ import { create } from 'zustand'
  * that shows its site full screen in the site WebView (apps/chrome/siteView.ts: it draws protected video where
  * the screen's capture sees it). All of them are on the TV's Home.
  */
-export const WEB_APP_IDS = ['exxen', 'netflix', 'disney', 'tod', 'prime', 'tvplus'] as const
+export const WEB_APP_IDS = ['youtube', 'exxen', 'netflix', 'disney', 'tod', 'prime', 'tvplus'] as const
 
 export type WebAppId = (typeof WEB_APP_IDS)[number]
 
@@ -16,6 +16,7 @@ export interface WebApp {
 }
 
 const SITES: Record<WebAppId, Omit<WebApp, 'id'>> = {
+  youtube: { name: 'YouTube', url: 'https://www.youtube.com/' },
   exxen: { name: 'Exxen', url: 'https://www.exxen.com/' },
   netflix: { name: 'Netflix', url: 'https://www.netflix.com/' },
   disney: { name: 'Disney+', url: 'https://www.disneyplus.com/' },
