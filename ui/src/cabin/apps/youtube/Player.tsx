@@ -50,20 +50,18 @@ const SKIP_SECONDS = 10
 type Side = 'back' | 'forward'
 
 /**
- * YouTube's player, full screen over the whole CarPlay area (only the truck's own strip beside it), as on
+ * YouTube's player, full screen over the whole screen (only the truck's own strip beside it), as on
  * YouTube's TV app. The video itself is YouTube's, in its own WebView under this page (the host places it
- * where the CarPlay area is: `show`); this draws only what's over it: a cover with the video's thumbnail
+ * where the screen is: `show`); this draws only what's over it: a cover with the video's thumbnail
  * until it plays, and YouTube's new controls, each in its own translucent shape, on a touch.
  */
 export function Player() {
   const open = useYouTube((store) => store.open)
   const app = useCabin((state) => state.navigation.route)
-  const handedOver = useCabin((state) => state.truckScreen)
-  // Going elsewhere (a shortcut, the Dashboard's widget) or handing the screen to the truck leaves the player;
-  // the video plays on, and YouTube opens on it again.
+  // Going elsewhere leaves the player; the video plays on, and YouTube opens on it again.
   useEffect(() => {
-    if (open && (handedOver || app.kind !== 'app' || app.app !== 'youtube')) leavePlayer()
-  }, [open, app, handedOver])
+    if (open && (app.kind !== 'app' || app.app !== 'youtube')) leavePlayer()
+  }, [open, app])
   return open ? <OpenPlayer /> : null
 }
 
@@ -93,10 +91,10 @@ function OpenPlayer() {
   }, [skip])
   useEffect(() => () => clearTimeout(lastTap.current.single), [])
 
-  // The video where the CarPlay area is, in the frame's pixels; again if the frame changes.
+  // The video where the screen is, in the frame's pixels; again if the frame changes.
   useEffect(() => {
     const place = () => {
-      const area = document.querySelector('.carplay')?.getBoundingClientRect()
+      const area = document.querySelector('.stage')?.getBoundingClientRect()
       if (!area) return
       const scale = window.devicePixelRatio
       command({

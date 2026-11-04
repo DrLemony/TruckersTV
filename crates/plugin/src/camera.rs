@@ -13,7 +13,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 
 use crate::log;
-use crate::navigation::Image;
+use crate::image::Image;
 
 static POSITION: AtomicUsize = AtomicUsize::new(0);
 
@@ -104,7 +104,7 @@ pub unsafe fn locate() {
         })
     })();
     if found.is_none() {
-        log!("camera: the game's camera code isn't the version WestPlay knows; the camera isn't known");
+        log!("camera: the game's camera code isn't the version TruckersTV knows; the camera isn't known");
     }
     POSITION.store(found.unwrap_or(0), Ordering::Release);
 }

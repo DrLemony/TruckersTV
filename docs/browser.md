@@ -2,7 +2,7 @@
 
 Open **Safari** from the cabin Home screen. Enter an HTTP/HTTPS address (a missing scheme defaults to
 HTTPS), then press Go. Back, Forward, Reload/Stop and 50–200% zoom are available. The last address is
-remembered; cookies and website storage live in a separate `site-browser` profile in WestPlay's data folder.
+remembered; cookies and website storage live in a separate `site-browser` profile in TruckersTV's data folder.
 Restart recreates the control without clearing that profile. Leaving the app hides and mutes the site.
 
 The browser uses a separate offscreen WebView2 composed into the existing game frame. Websites receive

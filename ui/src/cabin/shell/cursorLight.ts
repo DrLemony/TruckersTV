@@ -1,7 +1,7 @@
-import { goesLight, luminance, pictureAt } from '../apps/music/contrast'
+import { goesLight, luminance, pictureAt } from './contrast'
 
 /**
- * Whether the cursor is over something light, so it goes dark (as Apple Music's mini player does over light
+ * Whether the cursor is over something light, so it goes dark (over light
  * covers): a picture by its own pixels where it points (a cover, the wallpaper), anything else by the first solid
  * background under it; YouTube's full-screen player as dark. A video elsewhere or the map (drawn where the page
  * can't read) says nothing: the cursor stays as it was.

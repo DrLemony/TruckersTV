@@ -1,6 +1,6 @@
 //! Which GPU the cab is drawn on. WebView2 draws on the GPU Windows lists first, which on most laptops is
 //! the integrated one, while the game runs on the other: every frame was then drawn on the weak GPU and
-//! copied across to the game's. So WestPlay picks the GPU and tells WebView2 (Chromium's
+//! copied across to the game's. So TruckersTV picks the GPU and tells WebView2 (Chromium's
 //! `--use-adapter-luid`, its LUID's two halves in decimal: measured with Edge, the same engine, moving its
 //! drawing from one GPU to another): the game's once it runs, before that Windows' high-performance GPU; or
 //! the one the player chose in the companion, if it's there. A different GPU than the one WebView2 was
@@ -129,7 +129,7 @@ mod tests {
         assert_eq!(pick(None, None, radeon), Some(0x11deb));
         // The player's choice wins, even over the game's.
         assert_eq!(pick(Some("1002:164e:00000000:197"), nvidia, nvidia), Some(0x11deb));
-        // A chosen GPU that's gone (unplugged), or a LUID not listed (a stale one): WestPlay picks.
+        // A chosen GPU that's gone (unplugged), or a LUID not listed (a stale one): TruckersTV picks.
         assert_eq!(pick(Some("10de:0000:00000000:1"), radeon, None), Some(0x11deb));
         assert_eq!(pick(None, Some(luid(0x99)), Some(luid(0x98))), Some(0x10e61));
         assert_eq!(choose(None, None, None, &[]), None);

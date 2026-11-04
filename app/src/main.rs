@@ -1,12 +1,10 @@
-//! WestPlay app: the companion window (Tauri) plus the in-cabin UI host on its own thread.
+//! TruckersTV app: the companion window (Tauri) plus the in-cabin UI host on its own thread.
 
 // No console window in release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod customize;
-mod maps;
 mod setup;
-mod update;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -16,23 +14,15 @@ use std::time::{Duration, Instant};
 
 use setup::SetupStore;
 use tauri::{AppHandle, Emitter, Manager, RunEvent, State, WebviewWindow};
-use westplay_host::maps::SetUpGame;
 use westplay_host::settings::{Settings, SettingsFile, SharedSettings};
-use westplay_host::{
-    AccountAction, AccountRequests, BrowserGone, Config, Content, OpenRequest, SCREEN_HEIGHT, SCREEN_WIDTH, Status,
-};
+use westplay_host::{AccountAction, AccountRequests, BrowserGone, Config, Content, SCREEN_HEIGHT, SCREEN_WIDTH, Status};
 
 struct Host {
     stop: Arc<AtomicBool>,
     thread: Option<JoinHandle<()>>,
 }
 
-/// Requests from the companion window to open or close WestPlay on the truck's screen (the cabin page owns
-/// that state, which it also changes itself: its sidebar's truck button, its WestPlay button, the interaction
-/// key and W; the host reports it back in its status).
-struct WestplayOpen(Arc<OpenRequest>);
-
-/// The companion's sign-ins and sign-outs (YouTube, Spotify, Apple Music), for the host.
+/// The companion's sign-ins and sign-outs, for the host.
 struct Accounts(Arc<AccountRequests>);
 
 /// The player's settings: kept on disk, applied live by the host thread, changed from the companion window.
@@ -55,9 +45,12 @@ fn companion_ready(window: WebviewWindow) {
     }
 }
 
+/// Opens a site app's sign-in in a window on the desktop.
 #[tauri::command]
-fn set_westplay_open(open: bool, request: State<WestplayOpen>) {
-    request.0.request(open);
+fn site_sign_in(app: String, accounts: State<Accounts>) {
+    if let Ok(mut asked) = accounts.0.site.lock() {
+        *asked = Some(app);
+    }
 }
 
 /// Opens Google's sign-in for YouTube in a window on the desktop (the status then says when it's done).
@@ -96,41 +89,6 @@ fn spotify_check(accounts: State<Accounts>) {
     accounts.0.spotify.request(AccountAction::Check);
 }
 
-/// Opens Apple's sign-in for Apple Music in a window on the desktop (the status then says when it's done).
-#[tauri::command]
-fn apple_music_sign_in(accounts: State<Accounts>) {
-    accounts.0.apple_music.request(AccountAction::SignIn);
-}
-
-/// Signs Apple Music out.
-#[tauri::command]
-fn apple_music_sign_out(accounts: State<Accounts>) {
-    accounts.0.apple_music.request(AccountAction::SignOut);
-}
-
-/// Runs Apple Music's web player (hidden), so the status says whether it's signed in.
-#[tauri::command]
-fn apple_music_check(accounts: State<Accounts>) {
-    accounts.0.apple_music.request(AccountAction::Check);
-}
-
-/// The maker's Kreosus page, where players support WestPlay's development.
-const SUPPORT_PAGE: &str = "https://kreosus.com/enes-less";
-
-/// Opens the support page (Support me) in the player's browser. The address is fixed here, so the companion
-/// can't open any other.
-#[tauri::command]
-fn open_support_page() {
-    westplay_host::browser::open(SUPPORT_PAGE);
-}
-
-/// Where this run's `app.log` is (the About page): Documents\WestPlay\logs, or WestPlay's own data folder where
-/// Documents refused it; `None` if it couldn't be made.
-#[tauri::command]
-fn app_log_place() -> Option<String> {
-    westplay_host::log::place().map(|path| path.display().to_string())
-}
-
 /// A keyboard key's name for the player's keyboard, by its virtual-key code (the keybinds' labels); `None`
 /// for a mouse button or a key without one.
 #[tauri::command]
@@ -159,7 +117,7 @@ fn main() {
     if let Some(code) = westplay_setup::plugin::run_as_administrator_copy(&args) {
         std::process::exit(code);
     }
-    // One WestPlay at a time: a second only says so (held until the app ends). Before the log starts: a second
+    // One TruckersTV at a time: a second only says so (held until the app ends). Before the log starts: a second
     // making the log anew would empty the running one's.
     let Some(_instance) = westplay_host::Instance::claim() else {
         westplay_host::tell_already_running();
@@ -167,44 +125,24 @@ fn main() {
     };
     westplay_host::log::init();
     westplay_host::startup::mark("app: started");
-    let open_request = Arc::new(OpenRequest::default());
     let accounts = Arc::new(AccountRequests::default());
     let app = tauri::Builder::default()
-        .plugin(tauri_plugin_updater::Builder::new().build())
-        .manage(update::Updates::default())
-        .manage(WestplayOpen(open_request.clone()))
         .manage(Accounts(accounts.clone()))
-        .register_asynchronous_uri_scheme_protocol(maps::SCHEME, maps::serve)
-        .register_asynchronous_uri_scheme_protocol(maps::CUSTOMIZE_SCHEME, maps::serve_customize)
         .invoke_handler(tauri::generate_handler![
             companion_ready,
-            set_westplay_open,
+            site_sign_in,
             youtube_sign_in,
             youtube_sign_out,
             youtube_check,
             spotify_sign_in,
             spotify_sign_out,
             spotify_check,
-            apple_music_sign_in,
-            apple_music_sign_out,
-            apple_music_check,
-            open_support_page,
-            app_log_place,
-            customize::customize_list,
-            customize::add_wallpapers,
-            customize::add_icon_set,
-            customize::remove_wallpaper,
-            customize::remove_icon_set,
             customize::pick_tv_videos,
-            update::update_offer,
-            update::look_for_update,
-            update::install_update,
             get_settings,
             update_settings,
             key_name,
             setup::setup_state,
             setup::game_running,
-            setup::prepare_maps_again,
             setup::choose_game_folder,
             setup::check_game,
             setup::install_into_game,
@@ -230,27 +168,14 @@ fn main() {
             let shared = Arc::new(SharedSettings::new(file.load()));
             let setup = SetupStore::load(&config_dir, app.handle());
             setup::watch_installed_mods(&setup);
-            let customize = customize::Customize {
-                dir: app.path().app_local_data_dir()?.join(westplay_host::customize::FOLDER),
-                changed: Arc::default(),
-            };
-            let host = start_host(
-                app.handle(),
-                open_request.clone(),
-                accounts.clone(),
-                shared.clone(),
-                setup.game(),
-                Looks { config_dir: config_dir.clone(), customize_changed: customize.changed.clone() },
-            )?;
-            app.manage(customize);
+            let host = start_host(app.handle(), accounts.clone(), shared.clone(), config_dir.clone())?;
             app.manage(SettingsStore { file, shared });
             app.manage(setup);
             app.manage(std::sync::Mutex::new(host));
-            update::watch(app.handle());
             Ok(())
         })
         .build(tauri::generate_context!())
-        .expect("failed to build the WestPlay app");
+        .expect("failed to build the TruckersTV app");
 
     app.run(|app, event| {
         if let RunEvent::Exit = event {
@@ -271,13 +196,6 @@ fn stop_host(app: &AppHandle) {
     }
 }
 
-/// What the host needs for the screen's look: where the settings are kept (the cab changes its wallpaper
-/// itself), and the count of changes to the player's wallpapers and icon sets.
-struct Looks {
-    config_dir: PathBuf,
-    customize_changed: Arc<std::sync::atomic::AtomicU64>,
-}
-
 /// How a run of the host ended.
 enum Ended {
     Stopped,
@@ -296,11 +214,9 @@ const BROWSERS_GOING: Duration = Duration::from_secs(10);
 
 fn start_host(
     app: &AppHandle,
-    open_request: Arc<OpenRequest>,
     accounts: Arc<AccountRequests>,
     settings: Arc<SharedSettings>,
-    game: Arc<SetUpGame>,
-    looks: Looks,
+    config_dir: PathBuf,
 ) -> Result<Host, Box<dyn std::error::Error>> {
     let content = cabin_content(app);
     let data_dir = app.path().app_local_data_dir()?;
@@ -315,32 +231,27 @@ fn start_host(
         let mut restarts: Vec<Instant> = Vec::new();
         loop {
             let (content, data_dir) = (content.clone(), data_dir.clone());
-            let (open_request, settings, stop) = (open_request.clone(), settings.clone(), thread_stop.clone());
-            let (accounts, game) = (accounts.clone(), game.clone());
+            let (accounts, settings, stop) = (accounts.clone(), settings.clone(), thread_stop.clone());
             let status_events = events.clone();
-            let (settings_events, settings_dir) = (events.clone(), looks.config_dir.clone());
-            let customize_changed = looks.customize_changed.clone();
+            let (settings_events, settings_dir) = (events.clone(), config_dir.clone());
             let run = std::thread::Builder::new().name("westplay-host".into()).spawn(move || {
                 let config = Config {
                     width: SCREEN_WIDTH,
                     height: SCREEN_HEIGHT,
                     content,
                     data_dir,
-                    open_request,
                     accounts,
                     settings,
-                    game,
                     on_status: Box::new(move |status| {
                         let _ = status_events.emit("host-status", status);
                     }),
-                    // The cab's own Settings changed one (its wallpaper): kept, and the companion told.
+                    // The cab's own Settings changed one (its equalizer): kept, and the companion told.
                     on_settings: Box::new(move |settings| {
                         if let Err(error) = SettingsFile::in_dir(&settings_dir).save(settings) {
                             westplay_host::log!("[settings] couldn't save the cab's change: {error}");
                         }
                         let _ = settings_events.emit("settings-changed", settings);
                     }),
-                    customize_changed,
                 };
                 match westplay_host::run(config, stop) {
                     Ok(()) => Ended::Stopped,
@@ -375,7 +286,7 @@ fn start_host(
                 }
                 Ended::Failed(error) => error,
             };
-            let status = Status { error: Some(format!("WestPlay engine stopped: {error}")), ..Default::default() };
+            let status = Status { error: Some(format!("TruckersTV engine stopped: {error}")), ..Default::default() };
             let _ = events.emit("host-status", &status);
             return;
         }

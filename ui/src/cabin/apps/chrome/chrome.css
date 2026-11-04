@@ -1,0 +1,102 @@
+/* Chrome: the page above, and under it the bar: back, forward, the address pill, text size. */
+.chrome-app {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  transition: padding-bottom var(--motion-duration) var(--motion-ease);
+}
+/* The keyboard up, the bar rides on it (keyboard.css: 336px tall, 40px from the foot), with the page over the bar. */
+.chrome-app.typing {
+  padding-bottom: calc(336px + 40px + 8px - var(--edge));
+}
+.chrome-page {
+  flex: 1;
+  min-height: 0;
+  background: white;
+  color: #333;
+  border-radius: 12px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+.chrome-error {
+  color: #c64336;
+  font-size: 16px;
+  padding: 0 8px;
+}
+.chrome-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 20px;
+}
+.chrome-app button {
+  border: 0;
+  background: none;
+  color: #e8eaed;
+  font: inherit;
+  font-size: 30px;
+  min-width: 44px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.chrome-app button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.chrome-app button:active {
+  opacity: 0.6;
+}
+.chrome-address {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0 6px 0 20px;
+  background: #2c3852;
+  overflow: hidden;
+}
+.chrome-address .text-field {
+  flex: 1;
+  min-width: 0;
+}
+.chrome-address > button {
+  font-size: 24px;
+  color: var(--text);
+}
+/* Loading: the thin blue line along the pill's foot. */
+.chrome-address.loading::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 40%;
+  background: #8ab4f8;
+  animation: chrome-loading 1.2s ease-in-out infinite;
+}
+@keyframes chrome-loading {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+.chrome-zoom {
+  min-width: 52px;
+  text-align: center;
+  font-size: 16px;
+}
+/* The pill is the field: it takes the ring while it's typed in. */
+.chrome-address .text-field {
+  background: none;
+  box-shadow: none;
+}
+.chrome-address:has(.text-field.typing) {
+  box-shadow: inset 0 0 0 3px #8ab4f8;
+}

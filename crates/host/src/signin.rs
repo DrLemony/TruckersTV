@@ -1,12 +1,8 @@
-//! Signing in to YouTube, Spotify or Apple Music: the service's own sign-in page, in a window of WestPlay's on
-//! the PC's desktop (a real keyboard, out of the game), on the WebView2 profile the service's page in WestPlay
-//! uses, so the sign-in is its too. Nothing of the account passes through WestPlay: the page is the service's,
-//! and what it keeps (its cookies) is WebView2's, as a browser's would be. WestPlay only sees where the window
+//! Signing in to YouTube, Spotify or a site app: the service's own sign-in page, in a window of TruckersTV's on
+//! the PC's desktop (a real keyboard, out of the game), on the WebView2 profile the service's page in TruckersTV
+//! uses, so the sign-in is its too. Nothing of the account passes through TruckersTV: the page is the service's,
+//! and what it keeps (its cookies) is WebView2's, as a browser's would be. TruckersTV only sees where the window
 //! is: still signing in, back on the service (signed in), or closed.
-//!
-//! Apple Music's sign-in is a dialog in its own web player (music.apple.com), whose address doesn't change as
-//! it signs in: a script in the window's page opens that dialog and says when the page is signed in (only
-//! that).
 //!
 //! The WebView is hosted as YouTube's is, drawn into a visual (WebView2 doesn't mix that with a windowed
 //! WebView on one profile), here the window's own: the window passes its mouse to it and follows its cursor;
@@ -23,9 +19,8 @@ use webview2_com::Microsoft::Web::WebView2::Win32::{
     ICoreWebView2Environment3,
 };
 use webview2_com::{
-    AddScriptToExecuteOnDocumentCreatedCompletedHandler, CoTaskMemPWSTR,
-    CreateCoreWebView2CompositionControllerCompletedHandler, CursorChangedEventHandler,
-    NavigationCompletedEventHandler, WebMessageReceivedEventHandler, WindowCloseRequestedEventHandler,
+    CoTaskMemPWSTR, CreateCoreWebView2CompositionControllerCompletedHandler, CursorChangedEventHandler,
+    NavigationCompletedEventHandler, WindowCloseRequestedEventHandler,
 };
 use windows::UI::Composition::{Compositor, ContainerVisual, Desktop::DesktopWindowTarget};
 use windows::Win32::Foundation::{E_POINTER, HWND, LPARAM, LRESULT, POINT, RECT, WPARAM};
@@ -48,58 +43,83 @@ use windows_numerics::Vector2;
 use crate::webview;
 
 /// A service to sign in to: its sign-in page, the window's title, and its own pages, where the sign-in comes
-/// back to once done (but for `not_yet`, a step of its own on the way, if any). A service whose sign-in stays
-/// on one page has a script in it instead (`page_says`), which posts `{"signedIn":true}` once it is.
+/// back to once done (but for `not_yet`, a step of its own on the way, if any).
 pub struct Site {
     pub sign_in: &'static str,
     pub title: &'static str,
     pub home: &'static str,
     pub not_yet: Option<&'static str>,
-    pub page_says: Option<&'static str>,
+    /// A site app's way of telling: signed in once on its host (the domain), off its sign-in pages (a word of
+    /// their addresses). Its address changes within the page, unlike a service's.
+    pub leaves: Option<(&'static str, &'static str)>,
 }
 
 /// Google's sign-in for YouTube, coming back to YouTube once signed in (through YouTube's own `/signin`, which
 /// sets its cookies on the way).
 pub const YOUTUBE: Site = Site {
     sign_in: "https://accounts.google.com/ServiceLogin?service=youtube&continue=https%3A%2F%2Fwww.youtube.com%2F",
-    title: "Sign in to YouTube - WestPlay",
+    title: "Sign in to YouTube - TruckersTV",
     home: "https://www.youtube.com/",
     not_yet: Some("signin"),
-    page_says: None,
+    leaves: None,
 };
 
 /// Google's sign-in for YouTube Music: YouTube's own (YouTube Music shares YouTube's sign-in: its cookies are
 /// YouTube's), coming back to YouTube, which sets them.
-pub const YOUTUBE_MUSIC: Site = Site { title: "Sign in to YouTube Music - WestPlay", ..YOUTUBE };
+pub const YOUTUBE_MUSIC: Site = Site { title: "Sign in to YouTube Music - TruckersTV", ..YOUTUBE };
 
 /// Spotify's sign-in, coming back to its web player.
 pub const SPOTIFY: Site = Site {
     sign_in: "https://accounts.spotify.com/login?continue=https%3A%2F%2Fopen.spotify.com%2F",
-    title: "Sign in to Spotify - WestPlay",
+    title: "Sign in to Spotify - TruckersTV",
     home: "https://open.spotify.com/",
     not_yet: None,
-    page_says: None,
+    leaves: None,
 };
 
 /// Spotify's sign-up, coming back to its web player signed in to the new account.
 pub const SPOTIFY_SIGN_UP: Site = Site {
     sign_in: "https://www.spotify.com/signup?forward_url=https%3A%2F%2Fopen.spotify.com%2F",
-    title: "Sign up for Spotify - WestPlay",
+    title: "Sign up for Spotify - TruckersTV",
     home: "https://open.spotify.com/",
     not_yet: None,
-    page_says: None,
+    leaves: None,
 };
 
-/// Apple Music's sign-in: the dialog of its own web player, opened at once (`apple_music_sign_in.js`).
-pub const APPLE_MUSIC: Site = Site {
-    sign_in: "https://music.apple.com/",
-    title: "Sign in to Apple Music - WestPlay",
-    home: "https://music.apple.com/",
-    not_yet: None,
-    page_says: Some(include_str!("apple_music_sign_in.js")),
-};
-const CLASS: windows::core::PCWSTR = w!("WestPlaySignIn");
+/// A site app's sign-in, done when its page leaves it for the rest of `host`.
+/// shortcut: a sign-in page left by hand (a sign-up link) counts too, the companion's button opens it again.
+const fn site(title: &'static str, sign_in: &'static str, host: &'static str, step: &'static str) -> Site {
+    Site { sign_in, title, home: sign_in, not_yet: None, leaves: Some((host, step)) }
+}
+
+/// The site apps' sign-ins, by their ids (ui/src/cabin/apps/store/webApps.ts).
+static SITES: [(&str, Site); 6] = [
+    ("exxen", site("Sign in to Exxen - TruckersTV", "https://www.exxen.com/tr/giris-yap", "exxen.com", "giris")),
+    ("netflix", site("Sign in to Netflix - TruckersTV", "https://www.netflix.com/login", "netflix.com", "login")),
+    ("disney", site("Sign in to Disney+ - TruckersTV", "https://www.disneyplus.com/login", "disneyplus.com", "login")),
+    ("tod", site("Sign in to TOD - TruckersTV", "https://www.todtv.com.tr/kullanici/giris", "todtv.com.tr", "giris")),
+    (
+        "prime",
+        site(
+            "Sign in to Prime Video - TruckersTV",
+            "https://www.primevideo.com/auth-redirect/?signin=1",
+            "primevideo.com",
+            "/auth",
+        ),
+    ),
+    ("tvplus", site("Sign in to TV+ - TruckersTV", "https://tvplus.com.tr/giris", "tvplus.com.tr", "giris")),
+];
+
+/// The site app `app`'s sign-in.
+pub fn site_of(app: &str) -> Option<&'static Site> {
+    SITES.iter().find(|(id, _)| *id == app).map(|(_, site)| site)
+}
+
+const CLASS: windows::core::PCWSTR = w!("TruckersTVSignIn");
 const SIZE: (i32, i32) = (520, 760);
+/// How long a site app's page stays off its sign-in before that's the sign-in done: past a redirect on the way,
+/// and for what the page keeps of the account to be kept.
+const SETTLED: Duration = Duration::from_millis(1500);
 /// Windows' message for the mouse leaving a window that asked to be told (its value, from WinUser.h).
 const WM_MOUSELEAVE: u32 = 0x02A3;
 
@@ -144,13 +164,13 @@ pub struct SignInWindow {
     site: &'static Site,
     /// Its page closed it (`window.close()`).
     closed: Rc<Cell<bool>>,
-    /// Its page said it's signed in (a site that says so: `page_says`).
-    said: Rc<Cell<bool>>,
+    /// Since when a site app's page is off its sign-in.
+    left: Cell<Option<Instant>>,
 }
 
 impl SignInWindow {
     /// Opens `site`'s sign-in in a window on the desktop, in front, in `environment` (that of the service's page
-    /// in WestPlay: its profile, so the sign-in is its).
+    /// in TruckersTV: its profile, so the sign-in is its).
     pub fn open(environment: &ICoreWebView2Environment, site: &'static Site) -> Result<Self, webview::Error> {
         // SAFETY: no name: this process's own module, loaded as long as it runs.
         let instance = unsafe { GetModuleHandleW(None)? };
@@ -282,39 +302,6 @@ impl SignInWindow {
         // SAFETY: the handler and the token are locals for the call; WebView2 keeps its own reference to the handler.
         unsafe { webview.add_NavigationCompleted(&handler, &mut token)? };
 
-        // A site whose page says it's signed in: its script, and what it says.
-        let said = Rc::new(Cell::new(false));
-        if let Some(script) = site.page_says {
-            let target = webview.clone();
-            let script = HSTRING::from(script);
-            AddScriptToExecuteOnDocumentCreatedCompletedHandler::wait_for_async_operation(
-                // SAFETY: `script` lives through the call; the handler is kept alive until WebView2 calls it.
-                Box::new(move |handler| unsafe {
-                    target
-                        .AddScriptToExecuteOnDocumentCreated(&script, &handler)
-                        .map_err(webview2_com::Error::WindowsError)
-                }),
-                Box::new(|error, _id| error),
-            )?;
-            let heard = said.clone();
-            let handler = WebMessageReceivedEventHandler::create(Box::new(move |_webview, args| {
-                if let Some(args) = args {
-                    let mut message = PWSTR::null();
-                    // SAFETY: WebView2 writes a CoTaskMem string into `message`, freed by `CoTaskMemPWSTR`.
-                    if unsafe { args.WebMessageAsJson(&mut message) }.is_ok()
-                        && says_signed_in(&CoTaskMemPWSTR::from(message).to_string())
-                    {
-                        heard.set(true);
-                    }
-                }
-                Ok(())
-            }));
-            let mut token = 0;
-            // SAFETY: the handler and the token are locals for the call; WebView2 keeps its own reference to the
-            // handler.
-            unsafe { webview.add_WebMessageReceived(&handler, &mut token)? };
-        }
-
         // Its page closing it.
         let closed = Rc::new(Cell::new(false));
         let noted = closed.clone();
@@ -326,7 +313,8 @@ impl SignInWindow {
         // SAFETY: the handler and the token are locals for the call; WebView2 keeps its own reference to the handler.
         unsafe { webview.add_WindowCloseRequested(&handler, &mut token)? };
 
-        let this = Self { window, hosted, webview, _target: target, loaded, site, closed, said };
+        let left = Cell::new(None);
+        let this = Self { window, hosted, webview, _target: target, loaded, site, closed, left };
         // SAFETY: the window and its WebView were made above, on this thread, and are alive; the address lives through
         // the call.
         unsafe {
@@ -354,11 +342,14 @@ impl SignInWindow {
         if self.closed.get() || !unsafe { IsWindow(Some(self.window)) }.as_bool() {
             return Progress::Closed;
         }
-        if self.said.get() {
-            return Progress::SignedIn;
-        }
-        if self.site.page_says.is_some() {
-            return Progress::Signing;
+        if let Some((host, step)) = self.site.leaves {
+            let mut source = PWSTR::null();
+            // SAFETY: the WebView lives as long as `self`; it writes a CoTaskMem string, freed by `CoTaskMemPWSTR`.
+            let left = unsafe { self.webview.Source(&mut source) }.is_ok()
+                && left_sign_in(&CoTaskMemPWSTR::from(source).to_string(), host, step);
+            self.left.set(left.then(|| self.left.get().unwrap_or_else(Instant::now)));
+            let settled = self.left.get().is_some_and(|since| since.elapsed() >= SETTLED);
+            return if settled { Progress::SignedIn } else { Progress::Signing };
         }
         progress_at(self.site, &self.loaded.borrow())
     }
@@ -372,10 +363,12 @@ fn progress_at(site: &Site, loaded: &str) -> Progress {
     if done { Progress::SignedIn } else { Progress::Signing }
 }
 
-/// Whether a message of a sign-in window's page says it's signed in (`{"signedIn":true}`).
-fn says_signed_in(message: &str) -> bool {
-    serde_json::from_str::<serde_json::Value>(message)
-        .is_ok_and(|value| value.get("signedIn").and_then(serde_json::Value::as_bool) == Some(true))
+/// Whether `address` is on `host` (or under it), off the pages with `step` in their address.
+fn left_sign_in(address: &str, host: &str, step: &str) -> bool {
+    let address = address.to_lowercase();
+    let Some(rest) = address.strip_prefix("https://") else { return false };
+    let (at, path) = rest.split_at(rest.find('/').unwrap_or(rest.len()));
+    (at == host || at.strip_suffix(host).is_some_and(|under| under.ends_with('.'))) && !path.contains(step)
 }
 
 /// The WebView over the whole window.
@@ -515,6 +508,65 @@ impl Confirming {
 mod tests {
     use super::*;
 
+    /// Opens each site app's real sign-in, on the site browser's profile, as the player's press does.
+    #[test]
+    #[ignore = "opens WebView2 windows and needs the internet"]
+    fn opens_the_site_apps_sign_ins() {
+        use windows::Win32::System::Com::{COINIT_APARTMENTTHREADED, CoInitializeEx};
+        // SAFETY: COM is initialized on this test's own thread before creating the views.
+        unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED).ok().unwrap() };
+        let stage = crate::webview::Stage::new(800, 600).unwrap();
+        let profile = std::env::temp_dir().join("truckerstv-sign-in-test");
+        let browser = crate::site_browser::Browser::new(&stage, &profile).unwrap();
+        for (app, site) in &SITES {
+            let window = SignInWindow::open(browser.view.environment(), site).unwrap_or_else(|e| panic!("{app}: {e}"));
+            let started = Instant::now();
+            while window.loaded.borrow().is_empty() && started.elapsed() < Duration::from_secs(20) {
+                crate::pump_messages();
+                std::thread::sleep(Duration::from_millis(20));
+            }
+            println!("{app}: {}", window.loaded.borrow());
+            // Signed out, it stays on its sign-in, past any redirect there.
+            while started.elapsed() < Duration::from_secs(6) {
+                crate::pump_messages();
+                assert_eq!(window.progress(), Progress::Signing, "{app}");
+                std::thread::sleep(Duration::from_millis(20));
+            }
+            // Off it, on the rest of its site, the sign-in is done.
+            let (host, _) = site.leaves.unwrap();
+            // SAFETY: the WebView lives as long as `window`, the address through the call.
+            unsafe { window.webview.Navigate(&HSTRING::from(format!("https://www.{host}/"))).unwrap() };
+            let started = Instant::now();
+            while window.progress() != Progress::SignedIn {
+                assert!(started.elapsed() < Duration::from_secs(20), "{app}");
+                crate::pump_messages();
+                std::thread::sleep(Duration::from_millis(20));
+            }
+        }
+    }
+
+    #[test]
+    fn knows_the_site_apps_sign_ins_only() {
+        assert!(site_of("netflix").is_some_and(|site| site.sign_in.starts_with("https://")));
+        assert!(site_of("youtube").is_none());
+    }
+
+    #[test]
+    fn a_site_app_is_signed_in_off_its_sign_in_on_its_own_host() {
+        let left = |address, (host, step)| left_sign_in(address, host, step);
+        let netflix = site_of("netflix").and_then(|site| site.leaves).unwrap();
+        assert!(!left("https://www.netflix.com/tr/login?serverState=x", netflix));
+        assert!(left("https://www.netflix.com/browse", netflix));
+        assert!(!left("about:blank", netflix));
+        assert!(!left("https://notnetflix.com/browse", netflix));
+
+        let prime = site_of("prime").and_then(|site| site.leaves).unwrap();
+        assert!(!left("https://www.primevideo.com/auth-redirect/?signin=1", prime));
+        assert!(!left("https://www.amazon.com.tr/ap/signin?return_to=https%3A%2F%2Feu.primevideo.com%2F", prime));
+        assert!(!left("https://eu.primevideo.com/auth/return?ref_=av_auth_ap", prime));
+        assert!(left("https://eu.primevideo.com/?ref_=atv_auth_pre", prime));
+    }
+
     /// Signed in in its window, the sign-in goes on until the page says it's signed in: not as the page
     /// starts loading again (nothing said yet) nor while it still says signed out, and only once.
     #[test]
@@ -556,16 +608,6 @@ mod tests {
         // Signing up: Spotify's own pages until the new account comes back to the web player.
         assert_eq!(progress_at(&SPOTIFY_SIGN_UP, SPOTIFY_SIGN_UP.sign_in), Progress::Signing);
         assert_eq!(progress_at(&SPOTIFY_SIGN_UP, "https://open.spotify.com/"), Progress::SignedIn);
-    }
-
-    /// Apple Music's sign-in stays on its web player: signed in only once its page says so.
-    #[test]
-    fn hears_a_page_say_its_signed_in() {
-        assert!(says_signed_in(r#"{"signedIn":true}"#));
-        assert!(!says_signed_in(r#"{"signedIn":false}"#));
-        assert!(!says_signed_in(r#"{"signedIn":"yes"}"#));
-        assert!(!says_signed_in("not json"));
-        assert!(APPLE_MUSIC.page_says.is_some(), "its address says nothing");
     }
 
     #[test]

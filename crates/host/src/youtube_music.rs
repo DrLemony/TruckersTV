@@ -1,5 +1,5 @@
 //! YouTube Music: its own web player (music.youtube.com), in a WebView of its own, hidden under the cabin page.
-//! The YouTube Music app the player sees is WestPlay's own (ui/src/cabin/apps/youtubeMusic); the web player
+//! The YouTube Music app the player sees is TruckersTV's own (ui/src/cabin/apps/youtubeMusic); the web player
 //! plays (YouTube's own player, which the page runs) and answers the app's questions, from its own page: a
 //! script in it (`youtube_music.js`) asks YouTube Music's API as its own site does, and plays through the page's
 //! own queue and player bar, as its buttons do.
@@ -7,7 +7,7 @@
 //! It shares the cabin page's WebView2 profile with YouTube (youtube.rs), as a phone's two apps share one
 //! Google account: a sign-in in either is both's. Signing in is Google's own page, in a window on the desktop
 //! (signin.rs); signing out forgets the profile's cookies (both are signed out). Nothing of the account passes
-//! through WestPlay: what comes out is what the app shows (names, covers, what plays), only the fields below
+//! through TruckersTV: what comes out is what the app shows (names, covers, what plays), only the fields below
 //! (anything else the page might say is dropped here), whether it's signed in, and the account's picture (from
 //! Google's image hosts). Nothing of it is kept or logged.
 //!
@@ -766,7 +766,7 @@ impl Timing {
 
 /// What the host tells YouTube Music's page of the cab (never the cabin page's to send): the truck's speakers
 /// (`None`: as it is, a truck whose speakers aren't known), the driver's head, and the camera outside (its
-/// distance, metres; 0: not known). As Apple Music's (apple_music.rs).
+/// distance, metres; 0: not known).
 #[derive(Debug, PartialEq, serde::Serialize)]
 #[serde(tag = "action", rename_all = "camelCase")]
 enum Cab {
@@ -877,7 +877,7 @@ impl YouTubeMusic {
 
     /// The truck's speakers (none: its sound plays as it is), the driver's head, and whether the camera is outside
     /// the cab and how far (metres; 0: not known): the page is told the speakers as they change, the head as it moves,
-    /// the camera as it goes in or out or a quarter metre further, the tone as it's set and the spectrum as it's wanted (as Apple Music's).
+    /// the camera as it goes in or out or a quarter metre further, the tone as it's set and the spectrum as it's wanted.
     pub fn cab(
         &self,
         speakers: Option<&[Speaker]>,
@@ -1322,7 +1322,7 @@ mod tests {
         assert_eq!(quick.line(), "[youtube music] play: ready in 50 ms, sound in 600 ms");
     }
 
-    /// The page is told the cab as Apple Music's is.
+    /// The page is told the cab.
     #[test]
     fn tells_the_page_the_cab() {
         assert_eq!(

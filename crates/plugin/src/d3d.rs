@@ -1,7 +1,7 @@
 //! D3D11/DXGI hooks.
 //!
 //! Hooks `ID3D11Device::CreateTexture2D` (texture inventory for diagnostics), `CreateShaderResourceView` (the
-//! tablet's screen texture as the game makes its view: see `screens`),
+//! TV's screen texture as the game makes its view: see `screens`),
 //! `ID3D11DeviceContext::OMSetRenderTargets*` and `PSSetShaderResources` (screen takeover, see `screens`)
 //! and `IDXGISwapChain::Present`/`Present1` (frame clock, heartbeat, renderer info).
 //!
@@ -456,7 +456,7 @@ unsafe fn on_present(swapchain: *mut c_void) {
 
 /// The game's window as it is now, logged when it changes: exclusive fullscreen, borderless (a window covering
 /// its monitor), or a window; and whether it's in the background (another window in front). Windows composes
-/// WestPlay's hidden screen differently in each, so a log of a slow or frozen screen says which it was.
+/// TruckersTV's hidden screen differently in each, so a log of a slow or frozen screen says which it was.
 ///
 /// # Safety
 /// As [`on_present`].
@@ -488,7 +488,7 @@ unsafe fn log_window_mode(swapchain: *mut c_void) {
 }
 
 /// Whether the game's window shows: shown and not minimised, in front or not (Lossless Scaling's window is in
-/// front of the game it scales: owner 2026-10-28, whenever the game shows, WestPlay works). Not yet known: no.
+/// front of the game it scales: owner 2026-10-28, whenever the game shows, TruckersTV works). Not yet known: no.
 pub fn game_shown() -> bool {
     let window = HWND(GAME_WINDOW.load(Ordering::Relaxed) as *mut c_void);
     // SAFETY: plain queries about a window handle (one gone answers no).

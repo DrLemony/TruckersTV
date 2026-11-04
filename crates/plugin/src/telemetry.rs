@@ -239,10 +239,8 @@ unsafe fn on_game_event(event: u32, info: *const c_void) {
                 }
                 let (speed, paused) = (snapshot.speed, snapshot.paused);
                 drop(snapshot);
-                // Whether the player's keys type into WestPlay's field: they stop the moment the truck moves.
+                // Whether the player's keys type into TruckersTV's field: they stop the moment the truck moves.
                 crate::typing::update(speed, paused);
-                // The end of a frame is on the game's main thread, where its navigator may be changed.
-                crate::navigation::serve();
             }
             _ => {}
         }
@@ -314,7 +312,7 @@ unsafe fn on_truck(configuration: &ConfigurationEvent) {
         if let Some(bridge) = bridge::get() {
             bridge.plugin.truck.write(&truck);
         }
-        crate::screens::truck_changed(truck.id.as_str());
+        crate::screens::truck_changed();
     }
 }
 

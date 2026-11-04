@@ -1,7 +1,7 @@
-//! What WestPlay costs while the game runs, written to the log every 10 seconds (PLAN.md: Low-end PCs): the
-//! game's frame rate, how much of the time the game showed WestPlay's screen, the cab page's own frames (its
+//! What TruckersTV costs while the game runs, written to the log every 10 seconds (PLAN.md: Low-end PCs): the
+//! game's frame rate, how much of the time the game showed TruckersTV's screen, the cab page's own frames (its
 //! animation frames), how many Windows captured of it and how many went to the game, the processor time each of
-//! WestPlay's processes took, and what Chromium draws the cab with (a GPU, or the processor itself where it
+//! TruckersTV's processes took, and what Chromium draws the cab with (a GPU, or the processor itself where it
 //! doesn't trust the graphics driver). The same line from a player's log as from a measurement on a fast PC, so
 //! the two compare; short enough a window for a few seconds' freeze to show (players' screens at a few frames a
 //! second, 2026-10-27, were a minute's average).
@@ -37,20 +37,19 @@ const WINDOW: Duration = Duration::from_secs(10);
 /// Where the page's frames go in the line, once the page has said them.
 const PAGE: &str = "\u{1}page\u{1}";
 
-/// A WebView2 profile WestPlay runs, its processes counted under its name.
+/// A WebView2 profile TruckersTV runs, its processes counted under its name.
 #[derive(Clone, Copy)]
 pub enum Profile {
     /// The cab's own, which YouTube and YouTube Music share.
     Cab,
     Spotify,
-    AppleMusic,
 }
 
 /// What the host knows each second while the game runs.
 pub struct Sample {
     /// The game's frames presented so far (the plugin's heartbeat).
     pub game_frames: u64,
-    /// Whether the game drew WestPlay's screen lately.
+    /// Whether the game drew TruckersTV's screen lately.
     pub in_view: bool,
     /// Frames sent to the game so far.
     pub sent: u64,
@@ -64,7 +63,7 @@ pub struct Meter {
     /// The cab page's host (`westplay.cabin`; a development server's), to know its renderer by.
     cab_host: String,
     window: Option<Window>,
-    /// The part of WestPlay each WebView2 process is, as WebView2 last said (process id → part).
+    /// The part of TruckersTV each WebView2 process is, as WebView2 last said (process id → part).
     parts: Rc<RefCell<HashMap<u32, &'static str>>>,
     /// What Chromium draws the cab with (WebGL's renderer), once the page has said.
     renderer: Rc<RefCell<Option<String>>>,
@@ -172,9 +171,9 @@ impl Meter {
             .join(", ");
         let renderer = self.renderer.borrow().clone().unwrap_or_else(|| "not known yet".into());
         format!(
-            "performance, the last {seconds:.0} s: the game {game:.0} fps; WestPlay's screen in view {in_view}% of \
+            "performance, the last {seconds:.0} s: the game {game:.0} fps; TruckersTV's screen in view {in_view}% of \
              the time, {PAGE}{sent:.0} frames a second sent ({captured:.0} captured, {waited:.0} waited for the game); \
-             WestPlay used {total:.2} of {threads} processor threads ({each}); the cab is drawn with {renderer}"
+             TruckersTV used {total:.2} of {threads} processor threads ({each}); the cab is drawn with {renderer}"
         )
     }
 
@@ -225,7 +224,7 @@ fn described(renderer: String) -> String {
     }
 }
 
-/// Each process of a WebView2 profile, and the part of WestPlay it is.
+/// Each process of a WebView2 profile, and the part of TruckersTV it is.
 fn parts_of(
     infos: &ICoreWebView2ProcessExtendedInfoCollection,
     profile: Profile,
@@ -243,7 +242,6 @@ fn parts_of(
             let (pid, kind) = process_of(&info)?;
             let part = match profile {
                 Profile::Spotify => "Spotify",
-                Profile::AppleMusic => "Apple Music",
                 Profile::Cab => match kind {
                     COREWEBVIEW2_PROCESS_KIND_BROWSER => "browser",
                     COREWEBVIEW2_PROCESS_KIND_GPU => "GPU",
@@ -339,8 +337,8 @@ fn with_page(line: &str, frames: Option<f64>, seconds: f64) -> String {
     line.replacen(PAGE, &page, 1)
 }
 
-/// The part of WestPlay a process is: the app itself, the part WebView2 named it, else by the browser it's
-/// under. A WebView2 browser WestPlay started that isn't one of the host's (`browsers`) is the companion
+/// The part of TruckersTV a process is: the app itself, the part WebView2 named it, else by the browser it's
+/// under. A WebView2 browser TruckersTV started that isn't one of the host's (`browsers`) is the companion
 /// window's own (Tauri's), and so is everything under it; the rest is "other" (a process WebView2 hasn't
 /// named yet, or can't: older runtimes).
 fn part_of(
@@ -351,12 +349,12 @@ fn part_of(
     browsers: &[u32],
 ) -> &'static str {
     if pid == ours {
-        return "WestPlay app";
+        return "TruckersTV app";
     }
     if let Some(part) = named.get(&pid) {
         return part;
     }
-    // Up to the process WestPlay started itself: a browser (the tree is shallow; a loop isn't followed).
+    // Up to the process TruckersTV started itself: a browser (the tree is shallow; a loop isn't followed).
     let mut at = pid;
     for _ in 0..16 {
         let Some(&(_, parent)) = parents.iter().find(|(each, _)| *each == at) else { break };
@@ -388,7 +386,7 @@ fn process_tree() -> Vec<(u32, u32)> {
     parents
 }
 
-/// WestPlay's processes: its own and every one started from it (WebView2's), at any depth.
+/// TruckersTV's processes: its own and every one started from it (WebView2's), at any depth.
 fn processes() -> Vec<u32> {
     descendants(std::process::id(), &process_tree())
 }
@@ -466,16 +464,16 @@ mod tests {
 
     #[test]
     fn names_the_companion_windows_processes_by_its_browser() {
-        // WestPlay (1) started the cab's browser (2, the host's) and the companion's (5); each started its
+        // TruckersTV (1) started the cab's browser (2, the host's) and the companion's (5); each started its
         // renderers. WebView2 named the cab's browser and its renderer 3; 4 it hasn't named yet.
         let parents = [(1, 0), (2, 1), (3, 2), (4, 2), (5, 1), (6, 5), (7, 6), (9, 8)];
         let named = HashMap::from([(2, "browser"), (3, "cab page")]);
         let part = |pid| part_of(pid, 1, &parents, &named, &[2]);
-        assert_eq!(part(1), "WestPlay app");
+        assert_eq!(part(1), "TruckersTV app");
         assert_eq!(part(3), "cab page");
         assert_eq!(part(4), "other");
         assert_eq!([part(5), part(6), part(7)], ["companion"; 3]);
-        // Not WestPlay's at all, or a loop in the list: other.
+        // Not TruckersTV's at all, or a loop in the list: other.
         assert_eq!(part(9), "other");
         assert_eq!(part_of(7, 1, &[(7, 7)], &named, &[2]), "other");
     }

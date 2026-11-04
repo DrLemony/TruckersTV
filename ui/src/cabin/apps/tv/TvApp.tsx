@@ -17,6 +17,9 @@ import {
 import { apiAddress, liveChannels, signedIn } from './xtream'
 import './tv.css'
 
+/** How long the full screen's X stays, ms. */
+const EXIT_SHOWN_MS = 3000
+
 /** A free list of channels that broadcast openly (iptv-org), offered in M3U's form. */
 const SUGGESTED = 'https://iptv-org.github.io/iptv/countries/tr.m3u'
 
@@ -33,7 +36,11 @@ type Page =
 export function TvApp() {
   const text = useText()
   const [profiles, setProfiles] = useState(loadProfiles)
-  const [page, setPage] = useState<Page>({ kind: 'profiles' })
+  const [page, setPage] = useState<Page>(() => {
+    const { source } = useTv.getState()
+    return source ? { kind: 'browse', profile: source } : { kind: 'profiles' }
+  })
+  useEffect(() => useTv.setState({ source: null }), [])
   const keep = (next: Profile[]) => {
     setProfiles(next)
     saveProfiles(next)
@@ -142,7 +149,7 @@ function AddKind({ onPick, onCancel }: { onPick(kind: ProfileKind): void; onCanc
   const text = useText().tv
   return (
     <div className="tv-add">
-      <header className="tv-bar">
+      <header className="tv-head">
         <button className="tv-back" onClick={onCancel}>
           ‹ {text.back}
         </button>
@@ -194,7 +201,7 @@ function ProfileForm({
   }
   return (
     <div className="tv-form">
-      <header className="tv-bar">
+      <header className="tv-head">
         <button className="tv-back" onClick={onCancel}>
           ‹ {text.back}
         </button>
@@ -305,7 +312,7 @@ function Browse({ profile, onBack, onPlay }: { profile: Profile; onBack(): void;
   }, [channels, group, search])
   return (
     <>
-      <header className="tv-bar">
+      <header className="tv-head">
         <button className="tv-back" onClick={onBack}>
           ‹ {words.back}
         </button>
@@ -324,13 +331,18 @@ function Browse({ profile, onBack, onPlay }: { profile: Profile; onBack(): void;
           ))}
         </div>
       )}
-      {result === null && <p className="tv-note">{words.loading}</p>}
+      {result === null && (
+        <p className="tv-note">
+          {words.loading}
+          <small>{words.loadingHint}</small>
+        </p>
+      )}
       {typeof result === 'string' && <p className="tv-note">{result}</p>}
       {Array.isArray(result) && shown.length === 0 && <p className="tv-note">{words.noChannels}</p>}
       <ul className="tv-list">
         {shown.map((channel, index) => (
           <li key={`${channel.url}#${index}`}>
-            <button className="tv-row" onClick={() => onPlay(channel)}>
+            <button className="tv-item" onClick={() => onPlay(channel)}>
               {channel.logo ? <img src={channel.logo} alt="" loading="lazy" /> : <span className="tv-logo" />}
               {channel.name}
             </button>
@@ -343,8 +355,17 @@ function Browse({ profile, onBack, onPlay }: { profile: Profile; onBack(): void;
 
 function Player({ onBack }: { onBack(): void }) {
   const text = useText().tv
-  const { channel, playing, loading, failed, volume } = useTv()
+  const { channel, playing, loading, failed, volume, full } = useTv()
   const screen = useRef<HTMLDivElement>(null)
+  const [exitShown, setExitShown] = useState(false)
+  const exitHides = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  // The player's picture is over this page: the X it shows is the player's, the press on it this page's.
+  const showExit = (shown: boolean) => {
+    clearTimeout(exitHides.current)
+    setExitShown(shown)
+    sendTv({ action: 'exit', shown })
+    if (shown) exitHides.current = setTimeout(() => showExit(false), EXIT_SHOWN_MS)
+  }
   // The host's player, placed over this screen while it shows, and gone (stopped) as it goes.
   useEffect(() => {
     let frame = 0
@@ -361,22 +382,48 @@ function Player({ onBack }: { onBack(): void }) {
     place()
     return () => {
       cancelAnimationFrame(frame)
+      clearTimeout(exitHides.current)
+      sendTv({ action: 'exit', shown: false })
       sendTv({ action: 'hide' })
-      useTv.setState({ channel: null, playing: false, loading: false, failed: false })
+      useTv.setState({ channel: null, playing: false, loading: false, failed: false, full: false })
     }
   }, [])
   const status = failed ? text.streamFailed : loading ? text.loading : ''
   return (
     <>
-      <header className="tv-bar">
+      <header className="tv-head">
         <button className="tv-back" onClick={onBack}>
           ‹ {text.back}
         </button>
         <h1>{channel?.name}</h1>
       </header>
-      <div ref={screen} className="tv-screen" />
+      <div
+        ref={screen}
+        className={full ? 'tv-screen full' : 'tv-screen'}
+        onClick={() => {
+          if (full) showExit(true)
+        }}
+      />
+      {full && (
+        <button
+          className={exitShown ? 'tv-exit shown' : 'tv-exit'}
+          aria-label={text.exitFullScreen}
+          onClick={() => {
+            showExit(false)
+            useTv.setState({ full: false })
+          }}
+        >
+          ×
+        </button>
+      )}
       <div className="tv-controls">
-        <span className="tv-status">{status}</span>
+        <button className="tv-pill" onClick={() => useTv.setState({ full: true })}>
+          ⛶ {text.fullScreen}
+        </button>
+        <span className="tv-status">
+          {status}
+          {loading && !failed && <small>{text.loadingHint}</small>}
+        </span>
         <button
           className="tv-pill"
           disabled={!channel}

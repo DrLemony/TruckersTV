@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { HostMessage, PageMessage, Telemetry } from '../../shared/host'
 
 /** A stand-in for WebView2's `chrome.webview`: what the page posts, and a way to send it host messages. */
@@ -17,55 +17,23 @@ function fakeWebView() {
   }
 }
 
+beforeEach(() => {
+  vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => {}, removeItem: () => {} })
+})
+
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.resetModules()
 })
 
 describe('connectHost', () => {
-  it('tells the host whether WestPlay is open, and opens or closes it when the host asks', async () => {
+  it('tells the host it is ready as it connects', async () => {
     const webview = fakeWebView()
     vi.stubGlobal('window', { chrome: { webview: webview.bridge } })
-    const { connectHost, useCabin } = await import('./store')
-    const westplay = () => webview.posted.filter((message) => message.type === 'westplay')
-
+    const { connectHost } = await import('./store')
     const disconnect = connectHost(() => 0)
-    // As it connects: ready (so the host sends its state again), then open.
+    // So the host sends its state again.
     expect(webview.posted[0]).toEqual({ type: 'ready' })
-    expect(westplay()).toEqual([{ type: 'westplay', open: true }])
-
-    // The companion's switch: closed, and the page says so.
-    webview.send({ type: 'westplay', open: false })
-    expect(useCabin.getState().truckScreen).toBe(true)
-    expect(westplay().at(-1)).toEqual({ type: 'westplay', open: false })
-
-    // Asked for what it already is: nothing to report.
-    webview.send({ type: 'westplay', open: false })
-    expect(westplay()).toHaveLength(2)
-
-    // Opened in the cab (its WestPlay button): reported too.
-    useCabin.getState().setTruckScreen(false)
-    expect(useCabin.getState().truckScreen).toBe(false)
-    expect(westplay().at(-1)).toEqual({ type: 'westplay', open: true })
-
-    // Disconnected: no more reports.
-    disconnect()
-    useCabin.getState().setTruckScreen(true)
-    expect(westplay()).toHaveLength(3)
-  })
-
-  it("follows the companion's truck strip setting", async () => {
-    const webview = fakeWebView()
-    vi.stubGlobal('window', { chrome: { webview: webview.bridge } })
-    const { connectHost, useCabin } = await import('./store')
-    const disconnect = connectHost(() => 0)
-    expect(useCabin.getState().oemMode).toBe('auto')
-
-    webview.send({ type: 'settings', truckStrip: 'off' })
-    expect(useCabin.getState().oemMode).toBe('off')
-    // A value this page doesn't know (a newer app) keeps the truck's strip.
-    webview.send({ type: 'settings', truckStrip: 'sideways' })
-    expect(useCabin.getState().oemMode).toBe('auto')
     disconnect()
   })
 
@@ -77,9 +45,9 @@ describe('connectHost', () => {
     expect(useCabin.getState().equalizer).toEqual({ bass: 0, mid: 0, treble: 0 })
 
     // As the host keeps it; whatever it sends, each band whole dB within ±6 (none said: flat).
-    webview.send({ type: 'settings', truckStrip: 'auto', equalizer: { bass: -3, mid: 2.4, treble: 40 } })
+    webview.send({ type: 'settings', equalizer: { bass: -3, mid: 2.4, treble: 40 } })
     expect(useCabin.getState().equalizer).toEqual({ bass: -3, mid: 2, treble: 6 })
-    webview.send({ type: 'settings', truckStrip: 'auto' })
+    webview.send({ type: 'settings' })
     expect(useCabin.getState().equalizer).toEqual({ bass: 0, mid: 0, treble: 0 })
 
     expect(useCabin.getState().equalizerCustom).toBe(false)
@@ -96,7 +64,6 @@ describe('connectHost', () => {
     expect(webview.posted.at(-1)).toEqual({ type: 'equalizer', custom: false, bass: -4, mid: 0, treble: 6 })
     webview.send({
       type: 'settings',
-      truckStrip: 'auto',
       equalizer: { bass: -4, mid: 0, treble: 6 },
       equalizerCustom: true,
     })
@@ -124,35 +91,6 @@ describe('connectHost', () => {
     webview.send({ type: 'game', running: true })
     webview.send({ type: 'telemetry', data: electrics(true) })
     expect(useCabin.getState().power.phase).not.toBe('off')
-    disconnect()
-  })
-
-  it("keeps TruckersMP's players around the player, and forgets them when the game isn't under it", async () => {
-    const webview = fakeWebView()
-    vi.stubGlobal('window', { chrome: { webview: webview.bridge } })
-    const { connectHost, useLive } = await import('./store')
-    const disconnect = connectHost(() => 5)
-    webview.send({ type: 'nearby', server: 4, local: 113, players: [[7, -6175.5, 2139, 0.25]] })
-    expect(useLive.getState().nearby).toEqual({ server: 4, local: 113, players: [[7, -6175.5, 2139, 0.25]], at: 5 })
-    // None to tell: none kept.
-    webview.send({ type: 'nearby', server: null, local: null, players: [] })
-    expect(useLive.getState().nearby).toBeNull()
-    webview.send({ type: 'nearby', server: 4, local: 113, players: [] })
-    webview.send({ type: 'truckersmp', on: false })
-    expect(useLive.getState().nearby).toBeNull()
-    disconnect()
-  })
-
-  it('keeps the weather the host reads, and forgets it when the host can no longer read it', async () => {
-    const webview = fakeWebView()
-    vi.stubGlobal('window', { chrome: { webview: webview.bridge } })
-    const { connectHost, useLive } = await import('./store')
-    const disconnect = connectHost(() => 0)
-    expect(useLive.getState().weather).toBeNull()
-    webview.send({ type: 'weather', weather: { now: 'clear', coming: 'rain' } })
-    expect(useLive.getState().weather).toEqual({ now: 'clear', coming: 'rain' })
-    webview.send({ type: 'weather', weather: null })
-    expect(useLive.getState().weather).toBeNull()
     disconnect()
   })
 

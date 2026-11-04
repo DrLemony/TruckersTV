@@ -3,8 +3,8 @@ import { useVolumeHud } from './volumeShown'
 import './volumeHud.css'
 
 /**
- * The volume, as CarPlay shows it when the steering wheel's buttons change it: a glass pill at the top of the
- * screen with a speaker and the level, for a moment after each change (apps/keybinds.ts, volumeShown.ts).
+ * The volume: a bar at the top of the TV with a speaker and the level, for a moment after each change
+ * (apps/keybinds.ts, volumeShown.ts).
  */
 export function VolumeHud() {
   const { volume, shown } = useVolumeHud()

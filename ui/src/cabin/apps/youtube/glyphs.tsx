@@ -1,4 +1,4 @@
-/** The YouTube app's symbols, drawn for WestPlay in the manner of YouTube's own (24-unit grid). */
+/** The YouTube app's symbols, drawn for TruckersTV in the manner of YouTube's own (24-unit grid). */
 
 export function HistoryGlyph() {
   return (

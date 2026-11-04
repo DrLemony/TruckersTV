@@ -65,7 +65,7 @@ pub fn note_browser(webview: &ICoreWebView2) {
 }
 
 /// The WebView2 browser processes the host started (its WebViews' and sign-in windows'): any other WebView2
-/// browser of WestPlay's is the companion window's own.
+/// browser of TruckersTV's is the companion window's own.
 pub fn host_browsers() -> Vec<u32> {
     BROWSERS.lock().unwrap_or_else(|e| e.into_inner()).clone()
 }
@@ -97,7 +97,7 @@ pub fn wait_for_browsers(timeout: Duration) {
     }
 }
 
-/// A WebView2 process that failed, as far as it matters to WestPlay (the others, such as its GPU process,
+/// A WebView2 process that failed, as far as it matters to TruckersTV (the others, such as its GPU process,
 /// WebView2 restarts by itself).
 /// Ordered by how much they take to recover from.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -113,11 +113,9 @@ pub enum Failure {
 pub struct Stage {
     _dispatcher: DispatcherQueueController,
     compositor: Compositor,
-    /// The frame captured, `frame` in size.
+    /// The frame captured.
     root: ContainerVisual,
-    frame: (u32, u32),
-    /// What's on the frame (the cabin page, the players), laid out at the page's size and squeezed into the
-    /// frame where the page is taller ([`Stage::set_page_height`]).
+    /// What's on the frame (the cabin page, the players).
     page: ContainerVisual,
     page_size: PageSize,
 }
@@ -146,7 +144,6 @@ impl Stage {
             _dispatcher: dispatcher,
             compositor,
             root,
-            frame: (width, height),
             page,
             page_size: Rc::new(Cell::new((width, height))),
         })
@@ -171,18 +168,6 @@ impl Stage {
     /// The page's size as it changes, for what keeps within it.
     pub fn page_size(&self) -> PageSize {
         self.page_size.clone()
-    }
-
-    /// Lays what's on the frame out `height` tall (the frame's width), squeezed into the frame's height when
-    /// it's taller: a screen the game shows the frame on in another shape stretches it back
-    /// (`westplay_shared::page_height`). The WebViews on it are sized by their owners.
-    pub fn set_page_height(&self, height: u32) -> windows::core::Result<()> {
-        let (width, frame_height) = self.frame;
-        self.page.SetSize(Vector2 { X: width as f32, Y: height as f32 })?;
-        let squeeze = frame_height as f32 / height as f32;
-        self.page.SetScale(windows_numerics::Vector3 { X: 1.0, Y: squeeze, Z: 1.0 })?;
-        self.page_size.set((width, height));
-        Ok(())
     }
 }
 
@@ -234,7 +219,7 @@ impl OffscreenWebView {
         // window of its own over the host's client area and shows it, drawing nothing but taking the clicks
         // there; at (0, 0) it covered the top left of the player's main screen, where the desktop's icons are
         // (players' reports, reproduced by the owner 2026-10-21). The page's size and scale don't follow the
-        // host's place (`SetRasterizationScale` below, its input sent by WestPlay), and its rendering isn't
+        // host's place (`SetRasterizationScale` below, its input sent by TruckersTV), and its rendering isn't
         // paused for a window out of sight (`create_environment`: no occlusion).
         // SAFETY: a window of the system's own `STATIC` class, its strings static; no parent or menu.
         let host = unsafe {
@@ -253,7 +238,7 @@ impl OffscreenWebView {
                 None,
             )?
         };
-        // The page takes input only from WestPlay (`send_mouse`). Disabled, the window and the WebView's own
+        // The page takes input only from TruckersTV (`send_mouse`). Disabled, the window and the WebView's own
         // windows inside it get none of the real mouse: otherwise, once a click makes the WebView capture the
         // mouse, the player's real clicks and the real cursor (wherever the game parked it) reach the page too.
         // SAFETY: `host` was just created on this thread.
@@ -278,7 +263,7 @@ impl OffscreenWebView {
             controller3.SetShouldDetectMonitorScaleChanges(false)?;
             controller3.SetRasterizationScale(1.0)?;
             // Transparent: what the page leaves transparent stays transparent in the frames, and the game's own
-            // screen shows through there (the truck's OEM strip around CarPlay).
+            // screen shows through there (the screen's edge around the page).
             controller.cast::<ICoreWebView2Controller2>()?.SetDefaultBackgroundColor(COREWEBVIEW2_COLOR {
                 A: 0,
                 R: 0,
@@ -608,14 +593,14 @@ impl OffscreenWebView {
     }
 
     /// Serves `folder` at `https://{host_name}/` to any page of the WebView's, fetched across origins too
-    /// (the map's tiles, fetched by MapLibre's worker from the cabin page).
+    /// (fetched by a worker of the cabin page).
     pub fn map_folder_to_any_page(&self, host_name: &str, folder: &Path) -> windows::core::Result<()> {
         self.serve(host_name, folder, true)
     }
 
     fn serve(&self, host_name: &str, folder: &Path, any_page: bool) -> windows::core::Result<()> {
         // WebView2 serves nothing from a folder named in Windows' long form (`\\?\C:\…`, as an installed
-        // WestPlay's own folder comes): every file fails with ERR_INVALID_URL. Named plainly, it does.
+        // TruckersTV's own folder comes): every file fails with ERR_INVALID_URL. Named plainly, it does.
         let folder = westplay_setup::places::plain(folder);
         let access = if any_page {
             COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW
@@ -683,7 +668,7 @@ fn fitted((room_width, room_height): (u32, u32), width: u32, height: u32) -> (u3
     ((width * grow).round() as u32, (height * grow).round() as u32, 1.0 / grow)
 }
 
-/// What a WebView2 process failure means for WestPlay (Microsoft's guidance: reload after the page's
+/// What a WebView2 process failure means for TruckersTV (Microsoft's guidance: reload after the page's
 /// process exits or hangs, create the WebView again after the browser process exits; WebView2 restarts its
 /// other processes itself, and a frame's process is no concern of a page without frames).
 fn failure_of(kind: COREWEBVIEW2_PROCESS_FAILED_KIND) -> Option<Failure> {
@@ -821,7 +806,7 @@ mod tests {
         let Some(ui) = std::env::var_os("WESTPLAY_UI") else { panic!("WESTPLAY_UI: the built UI's folder") };
         // SAFETY: COM on this test's own thread, once, before anything uses it.
         unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED).ok().unwrap() };
-        // A profile of its own, or the player's (WESTPLAY_PROFILE: WestPlay's `webview2` folder, WestPlay closed).
+        // A profile of its own, or the player's (WESTPLAY_PROFILE: TruckersTV's `webview2` folder, TruckersTV closed).
         let user_data = std::env::var_os("WESTPLAY_PROFILE").map_or_else(
             || std::env::temp_dir().join(format!("westplay-built-cab-{}", std::process::id())),
             std::path::PathBuf::from,
@@ -838,12 +823,6 @@ mod tests {
         .unwrap();
         view.map_folder("westplay.cabin", Path::new(&ui)).unwrap();
         view.navigate("https://westplay.cabin/cabin.html").unwrap();
-        // As the host goes on (crate::run): the maps' and the player's own looks' folders, mapped as the page loads.
-        for (host, name) in [("westplay.maps", "maps"), ("westplay.customize", "customize")] {
-            let dir = std::env::temp_dir().join(format!("westplay-built-cab-{name}-{}", std::process::id()));
-            std::fs::create_dir_all(&dir).unwrap();
-            view.map_folder_to_any_page(host, &dir).unwrap();
-        }
         let until = std::time::Instant::now() + std::time::Duration::from_secs(8);
         while std::time::Instant::now() < until {
             crate::pump_messages();
@@ -892,7 +871,7 @@ mod tests {
         assert_eq!(view.evaluate("document.cookie").unwrap(), "\"\"", "a cookie outlived the sign-out");
     }
 
-    /// The cab drawn on each of the PC's GPUs in turn (graphics.rs), in one profile, as when WestPlay moves
+    /// The cab drawn on each of the PC's GPUs in turn (graphics.rs), in one profile, as when TruckersTV moves
     /// it to another: each WebView2 started after the last one's browser has gone, the page's WebGL on the GPU
     /// asked for (its renderer names it). On a PC with one GPU it checks only that.
     #[test]

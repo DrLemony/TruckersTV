@@ -17,7 +17,7 @@ pub const STEAM_APP: &str = "227300";
 const EXECUTABLE: &str = "bin/win_x64/eurotrucks2.exe";
 /// The game's process, as Windows names it (TruckersMP's client runs the same).
 const PROCESS: &str = "eurotrucks2.exe";
-/// The game versions WestPlay has been tried with. Others may well work (the plugin finds what it needs in
+/// The game versions TruckersTV has been tried with. Others may well work (the plugin finds what it needs in
 /// the game by its shape), but haven't been tried.
 pub const TESTED_VERSIONS: &str = "1.61.*";
 
@@ -89,7 +89,7 @@ impl Game {
         find().into_iter().find(|game| same_folder(&game.dir, dir)).or_else(|| Self::at(dir, FoundBy::Chosen))
     }
 
-    /// Whether WestPlay has been tried with this version of the game ([`TESTED_VERSIONS`]).
+    /// Whether TruckersTV has been tried with this version of the game ([`TESTED_VERSIONS`]).
     pub fn tested(&self) -> bool {
         self.version.is_some_and(|version| version.matches(TESTED_VERSIONS))
     }

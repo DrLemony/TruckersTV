@@ -1,4 +1,3 @@
-import type { IconStyle } from '../shared/customize'
 import { call, on } from './bridge'
 import { useCallback, useEffect, useState } from 'react'
 
@@ -12,32 +11,13 @@ export interface Settings {
     /** Cursor speed multiplier, `SENSITIVITY.min`..`SENSITIVITY.max`. */
     sensitivity: number
   }
-  /** What WestPlay does from the game, by the player's keys. */
+  /** What TruckersTV does from the game, by the player's keys. */
   keybinds: Record<KeybindId, Binding>
-  screen: {
-    truckStrip: TruckStrip
-  }
-  /** How the screen looks (Customize): a wallpaper's id and one of the player's icon sets, by name; `null`:
-   * none chosen (the cab's default wallpaper, WestPlay's own icons). */
-  look: {
-    wallpaper: string | null
-    iconSet: string | null
-    /** Light or dark icons, or as the screen is. */
-    iconStyle: IconStyle
-  }
-  /** The graphics card the screen is drawn on: one the player chose (an `Adapter`'s id), or `null`:
-   * WestPlay picks (the game's). */
-  graphics: {
-    gpu: string | null
-  }
   /** The cab's TV app: the folder its PC videos come from, or `null`: none chosen. */
   tv: {
     videos: string | null
   }
 }
-
-/** Mirrors `westplay_host::settings::TruckStrip`: the truck's own strip beside WestPlay, kept or not. */
-export type TruckStrip = 'auto' | 'off'
 
 /** Mirrors `westplay_host::settings::KeyCode`: a key of the keyboard or a button of the mouse, as Windows
  * numbers it (its virtual-key code: 0x05 the mouse's back button, 0x31 the 1 key, 0xA4 Left Alt). */
@@ -53,17 +33,18 @@ export const KEY_PRESETS: Record<KeyPreset, KeyCode> = {
   mouseForward: 0x06,
 }
 
-/** The key WestPlay starts with: Left Alt. */
+/** The key TruckersTV starts with: Left Alt. */
 export const DEFAULT_KEY = KEY_PRESETS.leftAlt
 
 /** Mirrors `westplay_host::settings::InteractionMode`. */
 export type InteractionMode = 'hold' | 'toggle'
 
-/** Mirrors `westplay_host::settings::Keybinds`: the playing music's volume up and down, and play/pause. */
-export type KeybindId = 'volumeUp' | 'volumeDown' | 'playPause'
+/** Mirrors `westplay_host::settings::Keybinds`: the playing music's volume up and down, play/pause, and the
+ * camera zoomed to the screen. */
+export type KeybindId = 'volumeUp' | 'volumeDown' | 'playPause' | 'zoom'
 
-/** In a row as their default keys are (1, 2, 3), as on a stereo: volume down, play/pause, volume up. */
-export const KEYBIND_IDS: KeybindId[] = ['volumeDown', 'playPause', 'volumeUp']
+/** In a row as their default keys are (1, 2, 3), as on a stereo: volume down, play/pause, volume up; the zoom (4). */
+export const KEYBIND_IDS: KeybindId[] = ['volumeDown', 'playPause', 'volumeUp', 'zoom']
 
 /** Mirrors `westplay_host::settings::Binding`: a key, pressed alone or while using the screen (holding its
  * key, or toggled on). */

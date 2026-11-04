@@ -13,7 +13,7 @@
 //! }
 //! ```
 //!
-//! Only what the map needs is supported: units, attributes (arrays as repeated keys), comments and
+//! Only what's needed is supported: units, attributes (arrays as repeated keys), comments and
 //! includes. Values are kept as written, except quoted strings, which lose their quotes and escapes
 //! (`\"`, `\\`, `\n`, `\t`, and `\xNN`: bytes of UTF-8).
 
@@ -80,7 +80,7 @@ fn read_into(
     current: &mut Option<Unit>,
     depth: u32,
 ) -> Result<(), FileError> {
-    // Encrypted or binary definitions aren't text: skipped (the map's own are text).
+    // Encrypted or binary definitions aren't text: skipped (the game's own are text).
     let Some(bytes) = files.read(path)? else { return Ok(()) };
     if depth > 8 || bytes.starts_with(b"ScsC") || bytes.starts_with(b"BSII") {
         return Ok(());

@@ -16,16 +16,6 @@
   font-family: 'Roboto Variable', Roboto, Arial, sans-serif;
 }
 
-.shell.appearance-light .youtube-app {
-  --yt-surface: #fff;
-  --yt-text: #0f0f0f;
-  --yt-dim: #606060;
-  --yt-chip: rgb(0 0 0 / 0.05);
-  --yt-chip-on: #0f0f0f;
-  --yt-chip-on-text: #fff;
-  --yt-field: #fff;
-  --yt-field-rim: #d3d3d3;
-}
 
 .youtube-app {
   border-radius: var(--panel-radius);
@@ -454,55 +444,10 @@
   }
 }
 
-/* The player: over the whole CarPlay area. What's under it shows through: the video (YouTube's, placed
-   there by the host), once it plays. The rest of the CarPlay area is hidden meanwhile (Shell.tsx `watching`). */
-.carplay.watching .wallpaper-stack,
-.carplay.watching .carplay-content > :not(.yt-player, .sidebar) {
+/* The player: over the whole screen. What's under it shows through: the video (YouTube's, placed
+   there by the host), once it plays. The rest of the screen is hidden meanwhile (Shell.tsx `watching`). */
+.stage.watching .stage-content > :not(.yt-player) {
   visibility: hidden;
-}
-
-/* The sidebar steps aside for it, sliding out left over the player, then gone; it slides back as the player
-   closes. YouTube opening onto a video already playing, it stays a moment first (`hold-sidebar`), so the
-   player sees where they are. */
-.carplay .sidebar {
-  transition:
-    transform 450ms var(--motion-ease),
-    visibility 0s;
-}
-
-.carplay.watching .sidebar {
-  z-index: 4;
-  transform: translateX(calc(-100% - var(--edge) - 24px));
-  visibility: hidden;
-  transition:
-    transform 450ms var(--motion-ease) var(--sidebar-hold, 0ms),
-    visibility 0s linear calc(var(--sidebar-hold, 0ms) + 450ms);
-}
-
-.carplay.hold-sidebar {
-  --sidebar-hold: 1600ms;
-}
-
-/* Pointing at the left edge, near the middle, brings it back over the video, on the same curve, to go Home
-   or to the Dashboard; it steps aside again once the pointer leaves it (shell/sidebarPeek.ts). */
-.carplay.watching.peek-sidebar .sidebar {
-  transform: none;
-  visibility: visible;
-  transition:
-    transform 450ms var(--motion-ease),
-    visibility 0s;
-}
-
-/* Over the video, the sidebar's glass has nothing of the page's to blur (the video is under the page, the
-   host's): a denser fill stands in for the blur, as CarPlay's material reads over a moving picture. */
-.carplay.watching .sidebar {
-  --glass: rgb(28 30 36 / 0.86);
-  --glass-rim: rgb(255 255 255 / 0.18);
-}
-
-.appearance-light .carplay.watching .sidebar {
-  --glass: rgb(242 242 247 / 0.9);
-  --glass-rim: rgb(255 255 255 / 0.85);
 }
 
 .yt-player {
@@ -916,16 +861,12 @@
   background: rgb(62 166 255 / 0.15);
 }
 
-/* The layer over the CarPlay area for what's drawn over the video where it shows through (VideoHole.tsx):
-   placed as the CarPlay area is, taking presses only where it draws. */
+/* The layer over the screen for what's drawn over the video where it shows through (VideoHole.tsx):
+   placed as the screen is, taking presses only where it draws. */
 .video-over {
   position: absolute;
-  inset: 0 0 var(--oem-bottom, 0px) var(--oem-left, 0px);
+  inset: 0 0 0 0;
   pointer-events: none;
-}
-
-.video-over.handed-over {
-  visibility: hidden;
 }
 
 .over-video {
@@ -935,7 +876,7 @@
 }
 
 .over-video-content {
-  zoom: var(--ui-scale, 1);
+  zoom: 1;
   position: relative;
 }
 
@@ -1095,9 +1036,6 @@
   box-shadow: 0 8px 28px rgb(0 0 0 / 0.45);
 }
 
-.shell.appearance-light .yt-menu {
-  background: #fff;
-}
 
 .youtube-app .yt-menu button {
   width: 100%;

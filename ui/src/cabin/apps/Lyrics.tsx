@@ -6,7 +6,7 @@ import { lineAt } from './lyricsTime'
 const HELD = 4000
 
 /**
- * A song's words in Now Playing (Apple Music's, Spotify's; each app styles them under its own `className`):
+ * A song's words in Now Playing (Spotify's; each app styles them under its own `className`):
  * synced, each line lit as it's sung (`now`; those sung `sung`), the one sung kept a third of the way down, and
  * pressed, the song plays from it; else the words as they are. `before` and `after` go above and below them (a
  * note, the credits).

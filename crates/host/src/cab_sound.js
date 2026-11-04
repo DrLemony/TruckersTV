@@ -1,4 +1,4 @@
-// WestPlay: the truck's own speakers, for a page's sound (youtube.js's video, apple_music.js's music): loaded
+// TruckersTV: the truck's own speakers, for a page's sound (youtube.js's video, spotify.js's music): loaded
 // before the page's own script, which makes one with `window.westplayCabSound(media, say)` (`media`: the
 // element its sound comes from now, or none; `say`: its way to the host, for the spectrum it measures) and
 // tells it the speakers, the driver's head and the camera as the host says them. Until there are speakers to

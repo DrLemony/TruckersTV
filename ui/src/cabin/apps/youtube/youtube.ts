@@ -10,7 +10,6 @@ import {
   type YouTubeState,
   type YouTubeVideo,
 } from '../../../shared/host'
-import { whenTransitionEnds } from '../../state/launch'
 import { type Account, keptAccount } from './account'
 import { follow, type Loading } from './follow'
 import { previewAnswer } from './preview'
@@ -33,7 +32,6 @@ interface YouTubeStore {
   /** The player was left open (the player went elsewhere, it didn't close it): YouTube opens on it again. */
   returnToPlayer: boolean
   /** Opened that way (onto a video already playing): the sidebar stays a moment before stepping aside. */
-  holdSidebar: boolean
   /** The pages open over Home, the one showing last. */
   views: View[]
   /** The current video's Up next (`null` until YouTube has answered). */
@@ -44,7 +42,7 @@ interface YouTubeStore {
   captions: string | null
   /** The picture's quality for every video: `auto` (YouTube's own choice), or the most it's to be. */
   quality: string
-  /** The playback speed, on every video until changed (not kept past WestPlay: YouTube's app's way). */
+  /** The playback speed, on every video until changed (not kept past TruckersTV: YouTube's app's way). */
   rate: number
   /** The newest first. */
   searches: string[]
@@ -59,11 +57,11 @@ interface YouTubeStore {
   /** Google's sign-in window is open on the PC's desktop. */
   signingIn: boolean
   /** Where the video shows through the page outside the full-screen player (Now playing's picture): the
-   * CarPlay area is cut open there (Shell.tsx), in its own pixels. */
+   * screen is cut open there (Shell.tsx), in its own pixels. */
   hole: Hole | null
 }
 
-/** A rounded rectangle of the CarPlay area, in its CSS pixels. */
+/** A rounded rectangle of the screen, in its CSS pixels. */
 export interface Hole {
   x: number
   y: number
@@ -113,7 +111,6 @@ export const useYouTube = create<YouTubeStore>()(
       current: null,
       open: false,
       returnToPlayer: false,
-      holdSidebar: false,
       views: [],
       upNext: null,
       queue: null,
@@ -124,7 +121,7 @@ export const useYouTube = create<YouTubeStore>()(
       watched: [],
       volume: 100,
       muted: false,
-      // Outside WestPlay (a plain browser) there's no host to say: the preview starts signed out.
+      // Outside TruckersTV (a plain browser) there's no host to say: the preview starts signed out.
       account: isInHost() ? null : { signedIn: false, avatar: null },
       signingIn: false,
       hole: null,
@@ -140,11 +137,11 @@ export const useYouTube = create<YouTubeStore>()(
         muted: store.muted,
         captions: store.captions,
         quality: store.quality,
-        // Signed in or not, and the picture's address (shown at once as WestPlay starts,
+        // Signed in or not, and the picture's address (shown at once as TruckersTV starts,
         // not 5 to 7 seconds on as YouTube's page says it; replaced as it does, signed out on signing out).
         account: store.account,
       }),
-      // Kept by an earlier WestPlay (or edited): only what's sound.
+      // Kept by an earlier TruckersTV (or edited): only what's sound.
       merge: (stored, current) => {
         const { searches, watched, volume, muted, captions, quality, account } = (stored ?? {}) as Partial<YouTubeStore>
         return {
@@ -169,12 +166,8 @@ export const useYouTube = create<YouTubeStore>()(
 
 /** Tells YouTube's player, or YouTube, what to do. */
 export function command(command: YouTubeCommand): void {
-  if (command.action === 'show') shows++
   postToHost({ type: 'youtube', command })
 }
-
-/** How many times the picture has been placed (`show`), to tell whether it was placed again since. */
-let shows = 0
 
 // Questions for YouTube, by id, waiting for their answers.
 let questions = 0
@@ -457,14 +450,14 @@ export function setQuality(quality: string): void {
 }
 
 /**
- * Calls `place` now, and again whenever where the video goes may have moved: the CarPlay area changing (the
+ * Calls `place` now, and again whenever where the video goes may have moved: the screen changing (the
  * OEM strip coming or going, the window resizing) or `element` (where the video shows) changing size (each
  * at most once a frame, as size changes are told). Returns the function that stops it.
  */
 export function followArea(place: () => void, element?: Element): () => void {
   place()
   const resized = new ResizeObserver(() => place())
-  const area = document.querySelector('.carplay')
+  const area = document.querySelector('.stage')
   if (area) resized.observe(area)
   if (element) resized.observe(element)
   window.addEventListener('resize', place)
@@ -474,23 +467,16 @@ export function followArea(place: () => void, element?: Element): () => void {
   }
 }
 
-/** Opens the full-screen player again on the video playing; `hold`: the sidebar stays a moment first (YouTube
- * opening onto it). */
-export function reopenPlayer(hold = false): void {
-  if (useYouTube.getState().current) useYouTube.setState({ open: true, returnToPlayer: false, holdSidebar: hold })
+/** Opens the full-screen player again on the video playing. */
+export function reopenPlayer(): void {
+  if (useYouTube.getState().current) useYouTube.setState({ open: true, returnToPlayer: false })
 }
 
 /** Leaves the full-screen player for elsewhere (another screen): the video plays on, and YouTube opens on it
  * again. */
 export function leavePlayer(): void {
-  useYouTube.setState({ open: false, returnToPlayer: useYouTube.getState().current !== null, holdSidebar: false })
-  // The picture stays under the page while the screen changes (the Dashboard or Home fading in over it): the
-  // player's screen lets it through all over, and without it the game's own screen would show there. Then it
-  // goes, unless something has placed it again since (the Dashboard's Now Playing) or the player is back.
-  const placed = shows
-  whenTransitionEnds(() => {
-    if (shows === placed && !useYouTube.getState().open) command({ action: 'hide' })
-  })
+  useYouTube.setState({ open: false, returnToPlayer: useYouTube.getState().current !== null })
+  command({ action: 'hide' })
 }
 
 /** Stops the video: paused, and no longer the video playing. */
@@ -503,14 +489,14 @@ export function stopVideo(): void {
 
 /** Closes the full-screen player; the video plays on, heard. */
 export function closePlayer(): void {
-  useYouTube.setState({ open: false, returnToPlayer: false, holdSidebar: false })
+  useYouTube.setState({ open: false, returnToPlayer: false })
   command({ action: 'hide' })
 }
 
 /** Opens Google's sign-in for YouTube in a window on the PC's desktop. */
 export function signIn(): void {
   command({ action: 'signIn' })
-  // Outside WestPlay, the preview's sign-in just succeeds.
+  // Outside TruckersTV, the preview's sign-in just succeeds.
   if (!isInHost()) useYouTube.setState({ account: { signedIn: true, avatar: null } })
 }
 

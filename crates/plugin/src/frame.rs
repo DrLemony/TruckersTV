@@ -1,4 +1,4 @@
-//! Frames from the WestPlay app.
+//! Frames from the TruckersTV app.
 //!
 //! The app publishes frames in a shared texture (see `westplay-shared`). We open it by name, and copy each
 //! new frame into a local texture under the texture's keyed mutex. The local copy is what the screens

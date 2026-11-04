@@ -1,15 +1,15 @@
 //! Whether the game's camera is outside the cab, for YouTube's sound to come muffled through it.
 //!
 //! The SDK doesn't say which camera is on. But with the camera in the cab, the game draws its screen's
-//! picture every frame, wherever the player looks (even back to the bed): the plugin sees WestPlay's screen
+//! picture every frame, wherever the player looks (even back to the bed): the plugin sees TruckersTV's screen
 //! texture used ([`westplay_shared::PluginBlock::screen_frame`] moving on with the game's frames). From
 //! outside, it isn't drawn: a few frames without it, and the camera is out (as quick as the game's cut from
 //! one camera to another). Probed in the game 2026-10-14.
 //!
-//! WestPlay's tablet isn't such a screen: the game draws it with the cab's models, and leaves it out as the
+//! The TV isn't such a screen: the game draws it with the cab's models, and leaves it out as the
 //! player looks away from it, the camera still in the cab (owner 2026-10-25: the music muffled as the head turned
-//! in the interior). So the cab's dashboard is drawn with a mark of WestPlay's in it too
-//! (`westplay_shared::CAB_MARK_WIDTH`), drawn as the GPS screens are: the cab is drawn when either was, last.
+//! in the interior). So the cab's dashboard is drawn with a mark of TruckersTV's in it too
+//! (`westplay_shared::CAB_MARK_WIDTH`), drawn as the dashboard's screens are: the cab is drawn when either was, last.
 //!
 //! How far out it is: the plugin reads the camera's world position from the game; its distance from the
 //! driver's head, where the SDK puts it in the truck (where the cab turns, plus the head in the cab), the
@@ -104,7 +104,7 @@ impl MenuGone {
     }
 }
 
-/// The game frame the cab was last drawn in: WestPlay's screen's (`screen_frame`) or its mark's (`cab_frame`),
+/// The game frame the cab was last drawn in: TruckersTV's screen's (`screen_frame`) or its mark's (`cab_frame`),
 /// whichever was later.
 pub fn drawn_frame(screen_frame: u64, cab_frame: u64) -> u64 {
     screen_frame.max(cab_frame)
@@ -270,15 +270,15 @@ mod tests {
     }
 
     #[test]
-    fn is_in_the_cab_while_its_mark_is_drawn_with_the_tablet_looked_away_from() {
+    fn is_in_the_cab_while_its_mark_is_drawn_with_the_tv_looked_away_from() {
         let (mut camera, mut game, mut screen, mut mark) = (Camera::default(), 100, 0, 0);
-        // The tablet and the dashboard drawn: in.
+        // The TV and the dashboard drawn: in.
         for _ in 0..60 {
             game += 1;
             (screen, mark) = (game, game);
             assert!(!camera.outside(S, drawn_frame(screen, mark), game, true, false));
         }
-        // The head turned away from the tablet: the dashboard still drawn every frame, in.
+        // The head turned away from the TV: the dashboard still drawn every frame, in.
         for _ in 0..300 {
             game += 1;
             mark = game;
@@ -324,7 +324,7 @@ mod tests {
     #[test]
     fn never_outside_without_the_screen_to_go_by() {
         let mut camera = Camera::default();
-        // A truck with no WestPlay screen: never drawn, never outside.
+        // A truck with no TruckersTV screen: never drawn, never outside.
         camera.outside("vehicle.man.tgx", 0, 10, true, false);
         assert!(!camera.outside("vehicle.man.tgx", 0, 500, true, false));
         // The electrics off or the game paused: the screen isn't drawn for those.

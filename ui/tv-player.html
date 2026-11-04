@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>WestPlay TV</title>
+    <title>TruckersTV TV</title>
     <style>
       html,
       body {
@@ -16,10 +16,30 @@
         height: 100%;
         object-fit: contain;
       }
+      /* The full screen's X: where the cabin page's own press area is (.tv-exit, apps/tv/tv.css). */
+      #exit {
+        position: fixed;
+        top: 3vh;
+        left: 47vw;
+        width: 6vw;
+        height: 6vw;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        font: 4vw sans-serif;
+        color: #fff;
+        background: rgb(20 27 46 / 0.85);
+        transform: translateY(-30vh);
+        transition: transform 350ms ease;
+      }
+      #exit.shown {
+        transform: none;
+      }
     </style>
   </head>
   <body>
     <video playsinline></video>
+    <div id="exit">×</div>
     <script type="module" src="/src/tvPlayer/main.ts"></script>
   </body>
 </html>

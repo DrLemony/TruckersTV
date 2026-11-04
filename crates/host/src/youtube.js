@@ -557,7 +557,7 @@
   }
 
   // Whether this page is signed in, and the picture for the player, told once it's loaded: nothing else of
-  // the account (WestPlay neither asks nor keeps).
+  // the account (TruckersTV neither asks nor keeps).
   let accountTold = false
   const tellAccount = async () => {
     accountTold = true

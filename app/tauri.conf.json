@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "WestPlay",
-  "version": "2.1.4",
-  "identifier": "app.westplay",
+  "productName": "TruckersTV",
+  "version": "1.0.0",
+  "identifier": "app.truckerstv",
   "build": {
     "devUrl": "http://localhost:5173",
     "frontendDist": "../ui/dist",
@@ -20,7 +20,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "WestPlay Community",
+        "title": "TruckersTV",
         "width": 900,
         "height": 600,
         "resizable": false,
@@ -34,11 +34,11 @@
   },
   "bundle": {
     "active": false,
-    "publisher": "WestPlay",
-    "copyright": "Copyright © 2026 WestPlay. Licensed under the GPL-3.0-or-later.",
+    "publisher": "TruckersTV",
+    "copyright": "Copyright © 2026 TruckersTV, built on WestPlay. Licensed under the GPL-3.0-or-later.",
     "category": "Game",
-    "shortDescription": "CarPlay for the screens of your trucks in Euro Truck Simulator 2",
-    "longDescription": "WestPlay puts a CarPlay-style screen in your truck in Euro Truck Simulator 2: a map made from your own game, music from Apple Music, Spotify and YouTube Music, YouTube, and your game's route, on the truck's own screen.",
+    "shortDescription": "An Android TV style television for the cab of your truck in Euro Truck Simulator 2",
+    "longDescription": "TruckersTV puts a television in the cab of your truck in Euro Truck Simulator 2, bought in the game's own shop: YouTube, music, live TV and your own videos, with an Android TV style home screen. Built on WestPlay.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -47,16 +47,6 @@
     ],
     "resources": {
       "../ui/dist/": "ui/"
-    }
-  },
-  "plugins": {
-    "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDU2OTc1ODBDNjdDNTc3Q0UKUldUT2Q4Vm5ERmlYVnQvV0dLdVVNUWtlcjlpKzB3MVVNeVJVeHhXNHFGVUNaU2xpVDNNVjhkWmEK",
-      "endpoints": ["https://github.com/DrLemony/WestPlay/releases/latest/download/latest.json"],
-      "requireSignedVersion": true,
-      "windows": {
-        "installMode": "passive"
-      }
     }
   }
 }

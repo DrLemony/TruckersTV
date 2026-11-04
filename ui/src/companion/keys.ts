@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { call } from './bridge'
-import type { Words } from './onboarding/words'
 import { KEY_PRESETS, type KeyCode, type KeyPreset } from './useSettings'
+import type { Words } from './words'
 
 /**
  * Keys as Windows numbers them (virtual-key codes, which the plugin checks in the game), from the companion's
@@ -60,7 +60,7 @@ function nameOf(key: KeyCode): Promise<string | null> {
   return name
 }
 
-/** A key's name for the player: the onboarding's for its keys (in their language), else Windows' for the
+/** A key's name for the player: ours for the usual ones (in their language), else Windows' for the
  * player's keyboard ("Num 4", "F9", "Q"). */
 export function useKeyName(key: KeyCode, words: Words): string {
   const preset = presetOf(key)
@@ -73,7 +73,7 @@ export function useKeyName(key: KeyCode, words: Words): string {
       active = false
     }
   }, [key, preset])
-  if (preset) return words.controls.keys[preset]
+  if (preset) return words.keys.names[preset]
   if (asked?.key !== key) return '…'
   // A key Windows has no name for: its number, as Windows has it.
   return asked.name ?? `0x${key.toString(16).toUpperCase().padStart(2, '0')}`

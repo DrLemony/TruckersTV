@@ -5,15 +5,12 @@
  * game, needs larger text, and that range was too thin to tell (owner 2026-10-24: "the texts are too small. Move the
  * text size range to larger side overall"): up to twice the apps' text as designed, as iOS's larger accessibility
  * sizes go. And down to 0.8 of it, iOS's own small end, for a screen seen larger or closer than the DAF's (owner
- * 2026-10-24, on the tablet: "Extend the range of text size").
+ * 2026-10-24: "Extend the range of text size").
  */
 export const TEXT_SIZES = [0.8, 0.9, 1, 1.12, 1.24, 1.35, 1.5, 1.7, 2] as const
 
-/** The step WestPlay starts on: a quarter larger than the apps' text as designed. */
+/** The step TruckersTV starts on: a quarter larger than the apps' text as designed. */
 export const DEFAULT_TEXT_SIZE = 4
-
-/** The steps added below the others on 2026-10-24 (0.8 and 0.9): a step kept from before is this many further on. */
-export const STEPS_ADDED_BELOW = 2
 
 /** A step kept or sent, as one there is (anything else: the default). */
 export function toTextSize(value: unknown): number {

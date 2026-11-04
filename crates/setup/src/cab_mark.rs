@@ -1,17 +1,14 @@
-//! The cab's mark (`westplay_shared::CAB_MARK_WIDTH`), in the dashboard scripts of every truck the tablet goes in.
+//! The cab's mark (`westplay_shared::CAB_MARK_WIDTH`), in the dashboard scripts of the trucks the TV goes in.
 //!
 //! The camera system takes the cab being drawn for the camera in it: the game draws a truck's screen scripts every
-//! frame the camera is in the cab, wherever the player looks, and never from outside. A truck whose screen is
-//! WestPlay's tells it by that screen; WestPlay's tablet can't, being drawn with the cab's models, left out as the
-//! player looks away from it (owner 2026-10-25: the music muffled as the head turned in the interior; "either you
-//! are in the interior, or you are not"). Every interior has a dashboard script (its cluster's display,
-//! `dashboard_path`), drawn as the screens' are: the mark, a fully transparent image a unit square in its corner,
-//! goes in each, and the plugin sees it drawn as it sees the screens.
+//! frame the camera is in the cab, wherever the player looks, and never from outside. The TV can't tell that, being
+//! drawn with the cab's models, left out as the player looks away from it. Every interior has a dashboard script (its
+//! cluster's display, `dashboard_path`), drawn as the screens' are: the mark, a fully transparent image a unit square
+//! in its corner, goes in each, and the plugin sees it drawn.
 //!
-//! A script is the game's own or a mod's, and one path may be in several installed mods (a dashboard mod over the
-//! game's, two trucks' mods bringing one script): which the game uses depends on the profile played. So a script
-//! is marked only where every copy installed is the same, and the game, any mod, gets it back with the mark;
-//! otherwise it's left as it is, and that truck's cab is told by its screen alone, as before.
+//! A script is the game's own or a mod's, and one path may be in several installed mods: which the game uses depends
+//! on the profile played. So a script is marked only where every copy installed is the same; otherwise it's left as
+//! it is, and that truck's cab is told by the TV alone.
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -20,7 +17,6 @@ use westplay_mapdata::archive::Archive;
 use westplay_mapdata::files::{GameFiles, Mount};
 use westplay_mapdata::sii;
 
-use crate::tablet::{self, Spot};
 
 /// The mark's texture's name, beside the screens' (`game_mod::SCREEN_DIR`).
 pub(crate) const TEXTURE: &str = "cab_mark";
@@ -43,12 +39,10 @@ impl Marks {
     }
 }
 
-/// The marks for the trucks the tablet goes in: the game's (`game`, the installed game mounted) and `mod_trucks`
-/// (the installed mods': `tablet::mod_trucks`), their dashboard scripts read from the game and `mods` (the installed
-/// mods' files, archives or folders, active in a profile or not).
-pub fn for_tablet(game: &GameFiles, mods: &[PathBuf], mod_trucks: &[Spot]) -> Marks {
-    let own = tablet::trucks(game).unwrap_or_default();
-    let trucks: BTreeSet<&str> = own.iter().chain(mod_trucks).map(|spot| spot.truck.as_str()).collect();
+/// The marks for the trucks the TV goes in, their dashboard scripts read from `game` and `mods` (the installed mods'
+/// files, archives or folders, active in a profile or not).
+pub fn for_tv(game: &GameFiles, mods: &[PathBuf]) -> Marks {
+    let trucks: BTreeSet<&str> = crate::cab_tv::trucks().collect();
     let mods: Vec<GameFiles> = mods.iter().filter_map(|path| mounted(path)).collect();
     marks(game, &mods, &trucks)
 }
@@ -102,7 +96,7 @@ fn dashboards(files: &GameFiles, trucks: &BTreeSet<&str>) -> BTreeSet<String> {
     paths
 }
 
-/// Whether the mod built at `built` (WestPlay's `.scs`) has the marks as `marks`: the same scripts, the same.
+/// Whether the mod built at `built` (TruckersTV's `.scs`) has the marks as `marks`: the same scripts, the same.
 pub fn current(marks: &Marks, built: &Path) -> bool {
     let Ok(archive) = Archive::open(built) else { return false };
     let ours = GameFiles::new(vec![Mount::Archive(archive)]);
@@ -155,7 +149,7 @@ mod tests {
                 ("def/vehicle/truck/scania.r/interior/day.sii", INTERIOR),
                 ("def/vehicle/truck/scania.r/interior/dash.sui", "\tdashboard_path: \"/ui/dashboard/scania.sii\"\n"),
                 ("ui/dashboard/scania.sii", DASHBOARD),
-                // Another truck's, not one the tablet goes in.
+                // Another truck's, not one the TV goes in.
                 ("def/vehicle/truck/bus/interior/day.sii", INTERIOR),
                 ("def/vehicle/truck/bus/interior/dash.sui", "dashboard_path: \"/ui/dashboard/bus.sii\"\n"),
                 ("ui/dashboard/bus.sii", DASHBOARD),
@@ -185,9 +179,9 @@ mod tests {
             ],
         );
         let found = marks(&game.mounted(), &[], &BTreeSet::from(["scania.r"]));
-        let (bytes, built) = crate::game_mod::build(&game.mounted(), &[], &GameFiles::new(Vec::new()), &found).unwrap();
+        let (bytes, built) = crate::game_mod::build(&game.mounted(), &found);
         assert_eq!(built.cab_marks, 1);
-        let at = game.0.join("westplay.scs");
+        let at = game.0.join("truckerstv.scs");
         std::fs::write(&at, bytes).unwrap();
         let archive = Archive::open(&at).unwrap();
         let read = |path: &str| archive.read(path).unwrap();

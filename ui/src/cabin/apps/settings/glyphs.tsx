@@ -23,38 +23,6 @@ export function AppearanceGlyph() {
 }
 
 /** Wallpaper: a flower of six petals. */
-export function WallpaperGlyph() {
-  return (
-    <TileGlyph>
-      {[0, 60, 120, 180, 240, 300].map((angle) => (
-        <ellipse key={angle} cx="12" cy="6.9" rx="2.9" ry="4.1" transform={`rotate(${angle} 12 12)`} opacity="0.92" />
-      ))}
-      <circle cx="12" cy="12" r="2.4" fill="rgb(0 0 0 / 0.18)" />
-    </TileGlyph>
-  )
-}
-
-/** Dashboard: its widgets, a tall one beside two small ones. */
-export function DashboardGlyph() {
-  return (
-    <TileGlyph>
-      <rect x="3.5" y="4" width="8.2" height="16" rx="2.2" />
-      <rect x="13.3" y="4" width="7.2" height="7.2" rx="2.2" />
-      <rect x="13.3" y="12.8" width="7.2" height="7.2" rx="2.2" />
-    </TileGlyph>
-  )
-}
-
-/** Now Playing: a pair of beamed notes. */
-export function NowPlayingGlyph() {
-  return (
-    <TileGlyph>
-      <path d="M19.6 3.4v11.9a3 3 0 1 1-1.8-2.75V7.9l-8.2 1.9v7.5a3 3 0 1 1-1.8-2.75V6.5a1 1 0 0 1 .78-.98l9.8-2.27a1 1 0 0 1 1.22.98Z" />
-    </TileGlyph>
-  )
-}
-
-/** Sound: a speaker, and two waves leaving it. */
 export function SoundGlyph() {
   return (
     <TileGlyph>

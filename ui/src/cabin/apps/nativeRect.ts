@@ -1,8 +1,8 @@
-/** Where `element` is on the frame, in its pixels, for a WebView of the host's placed over it (Safari's page, TV's
+/** Where `element` is on the frame, in its pixels, for a WebView of the host's placed over it (Chrome's page, TV's
  * player): clipped to the cab's screen and to the keyboard showing; `null` while either isn't there. */
 export function nativeRect(element: Element | null): { x: number; y: number; width: number; height: number } | null {
   const box = element?.getBoundingClientRect()
-  const cabin = document.querySelector('.carplay')?.getBoundingClientRect()
+  const cabin = document.querySelector('.stage')?.getBoundingClientRect()
   if (!box || !cabin) return null
   const keyboard = document.querySelector('.keyboard.shown')?.getBoundingClientRect()
   const scale = window.devicePixelRatio

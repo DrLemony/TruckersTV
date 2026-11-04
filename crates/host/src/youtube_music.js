@@ -1,5 +1,5 @@
-// WestPlay, in YouTube Music's web player (youtube_music.rs): YouTube Music's own page, run hidden under the cab.
-// The YouTube Music app the player sees is WestPlay's own; this answers its questions and plays as it asks,
+// TruckersTV, in YouTube Music's web player (youtube_music.rs): YouTube Music's own page, run hidden under the cab.
+// The YouTube Music app the player sees is TruckersTV's own; this answers its questions and plays as it asks,
 // through the page's own player:
 //
 // - Questions (Home, Explore, a page, a search, an album's, playlist's or artist's page, the Library, a song's

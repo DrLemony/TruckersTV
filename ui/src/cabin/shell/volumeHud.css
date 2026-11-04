@@ -2,8 +2,7 @@
 
 .volume-hud {
   position: absolute;
-  /* Right of the sidebar, as the apps are. */
-  left: var(--content-left, 170px);
+  left: var(--edge);
   right: 0;
   top: 22px;
   z-index: 3;

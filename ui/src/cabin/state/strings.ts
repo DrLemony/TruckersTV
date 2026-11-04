@@ -1,88 +1,29 @@
-import type { Sky } from '../../shared/host'
 import type { ReturnKind } from '../keyboard/layouts'
-import type { TurnKind } from '../maps/guidance'
-import type { DestinationKind } from '../maps/places'
+import { WEB_APP_NAMES } from '../apps/store/webApps'
 import type { AppId } from './apps'
 
 /**
- * The cabin's own words, in English and Turkish for now (every one of the game's 43 languages later):
- * Turkish when the game plays in Turkish, English otherwise. Place names on the map come from the game's
- * own text in its language (crates/mapdata locale.rs), not from here.
+ * The TV's own words, in English and Turkish: Turkish when the game plays in Turkish, English otherwise.
  */
 
 export type Language = 'en' | 'tr'
 
 export interface Strings {
-  /** The decimal separator: "9.4 km", "9,4 km". */
-  decimal: string
-  /** The trip pill: "15:40 arrival · 12 min · 9.4 km". */
-  arrival: string
   minutes: (minutes: number) => string
   hours: (hours: number, minutes: string) => string
-  speedLimit: (limit: number) => string
   /** Turn-by-turn. */
   now: string
   then: string
-  arrive: string
-  turns: Record<Exclude<TurnKind, 'roundabout'>, string>
-  roundabout: (exit: number) => string
-  /** Maps. */
-  recentre: string
-  /** The compass: turns the map north up, seen from above. */
-  northUp: string
   zoomIn: string
   zoomOut: string
   /** Maps' search: its button, and the field's hint. */
   search: string
-  searchPlaces: string
   close: string
-  /** Destinations (Maps' search): its sections, what places are (one, and the nearby lists'), the place
-   * card's buttons, and how the game answered. */
-  destinations: {
-    favourites: string
-    headquarters: string
-    yourGarage: string
-    findNearby: string
-    /** "Find nearby" on a route: the places offered are along it. */
-    alongRoute: string
-    recents: string
-    kinds: Record<DestinationKind, string>
-    nearby: Partial<Record<DestinationKind, string>>
-    straightLine: (distance: string) => string
-    /** How far along the route a place is. */
-    alongTheRoute: (distance: string) => string
-    /** A stop added: how much longer the route is with it (the game's distance and time). */
-    stopAdds: (distance: string, time: string) => string
-    /** A stop added, but the game's new route doesn't pass it. */
-    notOnRoute: string
-    /** The routes offered before Go (Directions), by what each is planned for; while they're found. */
-    plans: Record<'fastest' | 'shortest' | 'smallRoads' | 'other', string>
-    finding: string
-    /** Go: the route is set, but the game takes its own way there, not the one picked. */
-    ownWay: string
-    go: string
-    addStop: string
-    endRoute: string
-    back: string
-    noResults: string
-    loading: string
-    noPlaces: string
-    done: Record<'go' | 'addStop' | 'end', string>
-    alreadyThere: string
-    full: string
-    onJob: string
-    noAnswer: string
-    /** The game runs as administrator: WestPlay can't see its route. */
-    elevated: string
-    unsupported: string
-    failed: string
-  }
   /** The keyboard: its keys (named for screen readers where they show a symbol), and a field's clear button. */
   keyboard: {
     space: string
     returnKey: Record<ReturnKind, string>
     shift: string
-    capsLock: string
     delete: string
     nextKeyboard: string
     hide: string
@@ -101,22 +42,7 @@ export interface Strings {
   next: string
   shuffle: string
   repeat: string
-  notPlaying: string
-  openMusicApp: string
-  nothingLoaded: string
   playing: string
-  /** The Dashboard's destination widget: the job's pickup or delivery, or where the route ends. */
-  delivery: string
-  pickup: string
-  destination: string
-  mapPoint: string
-  arriveBy: (time: string) => string
-  late: string
-  /** Days of the week, short, from Monday (the game's day 0). */
-  days: readonly string[]
-  /** The Dashboard's weather widget: the weather, and the weather it's turning to. */
-  weather: Record<Sky, string>
-  weatherTurning: Record<Sky, string>
   /** The YouTube app: the search field's hint, Home's sections and chips (each a search), what a list says
    * when it's empty or YouTube didn't answer, the live badge, and the player's words. */
   youtube: {
@@ -260,96 +186,7 @@ export interface Strings {
     /** The "E" of an explicit song. */
     explicit: string
   }
-  /** The Music app (Apple Music), in Apple's own words: its tabs and search field; its pages' and sections'
-   * words; what things are ("Album · Tarkan"); its buttons, Now Playing's and Up Next's; its sign-in, and the
-   * toasts of favouriting and adding to the Library. */
-  appleMusic: {
-    tabs: { home: string; new: string; radio: string; library: string; search: string }
-    searchHint: string
-    browseCategories: string
-    recentlySearched: string
-    clear: string
-    topResults: string
-    songs: string
-    artists: string
-    albums: string
-    playlists: string
-    stations: string
-    noResults: string
-    noResultsHint: string
-    seeAll: string
-    recentlyPlayed: string
-    recentlyAdded: string
-    kinds: {
-      album: string
-      playlist: string
-      artist: string
-      station: string
-      song: string
-      curator: string
-      folder: string
-    }
-    /** "11 songs, 43 minutes" */
-    length: (songs: number, seconds: number) => string
-    topSongs: string
-    play: string
-    shuffle: string
-    live: string
-    explicit: string
-    preview: string
-    upNext: string
-    /** Now Playing's words for the song (Apple Music's Lyrics), none, and who wrote them. */
-    lyrics: string
-    noLyrics: string
-    writtenBy: (names: string) => string
-    /** "From Blue Hour" (Up Next, the songs to come from where it plays). */
-    from: (name: string) => string
-    favorite: string
-    favorited: string
-    unfavorited: string
-    addToLibrary: string
-    added: string
-    signIn: string
-    signOut: string
-    /** The account's button (its picture). */
-    account: string
-    /** A Library list's controls: the filter and More, their choices, and its search field's hint. */
-    filter: string
-    more: string
-    all: { playlists: string; albums: string; songs: string }
-    favorites: string
-    grid: string
-    list: string
-    find: string
-    /** The playlists' sorts (the other lists' are Apple Music's own words). */
-    sorts: { name: string; '-dateAdded': string; '-lastPlayed': string; '-updated': string; type: string }
-    /** While Apple Music's sign-in window is open on the PC. */
-    finishOnPc: string
-    /** Home, signed out. */
-    homePitch: { title: string; text: string }
-    /** The Library, signed out. */
-    libraryPitch: { title: string; text: string }
-    /** The sign-in prompt, and why. */
-    promptTitle: string
-    promptFor: { library: string; favorite: string }
-    notNow: string
-    /** The banner while songs play as their previews. */
-    previewBanner: { title: string; text: string }
-    empty: string
-    cantPlay: string
-    failed: string
-    tryAgain: string
-    back: string
-    close: string
-    nowPlaying: string
-    next: string
-    previous: string
-    repeat: string
-    volume: string
-    mute: string
-    unmute: string
-  }
-  /** YouTube Music: WestPlay's own app, in the look of YouTube Music's tablet app. */
+  /** YouTube Music: TruckersTV's own app, in the look of YouTube Music's tablet app. */
   youtubeMusic: {
     tabs: { home: string; explore: string; library: string; search: string }
     searchHint: string
@@ -419,35 +256,26 @@ export interface Strings {
     addedToQueue: string
     volume: string
   }
-  /** The Weather app: where the truck is, the game's next change of weather and the roads. */
-  weatherApp: {
-    myLocation: string
-    nextChange: string
-    /** "In about 1:42 hrs" */
-    inAbout: (time: string) => string
-    roads: string
-    roadStates: { dry: string; damp: string; wet: string }
-    roadTrends: { drying: string; gettingWet: string }
-    /** No game, or one whose weather WestPlay can't read. */
-    unavailable: string
-  }
-  /** Safari: its toolbar and what it says. */
-  safari: {
+  /** Chrome: its toolbar and what it says. */
+  chrome: {
     back: string
     forward: string
     reload: string
     stop: string
-    go: string
     address: string
     loading: string
     zoomIn: string
     zoomOut: string
     restart: string
-    /** Outside WestPlay (the page in a desktop browser), where no website can show. */
+    /** Outside TruckersTV (the page in a desktop browser), where no website can show. */
     outsideHost: string
   }
   /** TV: the player's M3U playlists, their channels and the channel playing. */
   tv: {
+    fullScreen: string
+    /** Under Loading, for a list or a channel that doesn't come. */
+    loadingHint: string
+    exitFullScreen: string
     /** The profiles, as Netflix's: its title, the card adding one, and managing (removing) them. */
     sources: string
     addProfile: string
@@ -467,7 +295,6 @@ export interface Strings {
     password: string
     save: string
     paste: string
-    cancel: string
     back: string
     remove: string
     /** A free list of channels (iptv-org), offered in M3U's form. */
@@ -492,21 +319,11 @@ export interface Strings {
   }
   /** The Settings app: its pages, rows and the words under them. */
   settings: {
-    appearance: string
     light: string
     dark: string
-    automatic: string
-    automaticFooter: string
-    /** The truck's information bar beside WestPlay (the DAF's, the Scania Smart Dash's), and what it is. */
-    vehicleBar: string
-    vehicleBarFooter: string
     textSize: string
     /** Text Size's own text, shown at the size chosen (iOS's). */
     textSizeAbout: string
-    wallpaper: string
-    dashboard: string
-    widgets: string
-    showAlbumArt: string
     /** Sound, and in it the Equalizer: the speakers as tuned (Recommended) or the player's own tone (Custom), what
      * it does, its three bands under the graph, and the curve set back. */
     sound: string
@@ -521,102 +338,44 @@ export interface Strings {
     back: string
   }
   /** Apps. */
+  /** The App Store: its sites' apps, got onto Home, opened, or taken off. */
+  launcher: {
+    home: string
+    apps: string
+    library: string
+    continue: string
+    signIn: string
+    signingIn: string
+    arrange: string
+    arrangeHint: string
+    arrangeDone: string
+    recent: string
+    yourApps: string
+    search: string
+    searchHint: string
+    noApps: string
+    categories: string
+    categoryNames: { entertainment: string; music: string; video: string; sports: string; tools: string }
+    sources: string
+    addSource: string
+  }
   apps: Record<AppId, string>
-  notBuiltYet: string
 }
-
-const ENGLISH_ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth']
 
 export const STRINGS: Record<Language, Strings> = {
   en: {
-    decimal: '.',
-    arrival: 'arrival',
     minutes: (minutes) => `${minutes} min`,
     hours: (hours, minutes) => `${hours}:${minutes} hrs`,
-    speedLimit: (limit) => `Speed limit ${limit}`,
     now: 'Now',
     then: 'Then',
-    arrive: 'Arrive at destination',
-    turns: {
-      'slight-left': 'Bear left',
-      left: 'Turn left',
-      'sharp-left': 'Turn sharp left',
-      'slight-right': 'Bear right',
-      right: 'Turn right',
-      'sharp-right': 'Turn sharp right',
-      'u-turn': 'Make a U-turn',
-      'keep-left': 'Keep left',
-      'keep-right': 'Keep right',
-      'exit-left': 'Take the exit on the left',
-      'exit-right': 'Take the exit on the right',
-    },
-    roundabout: (exit) => `At the roundabout, take the ${ENGLISH_ORDINALS[exit - 1] ?? `${exit}th`} exit`,
-    recentre: 'Recentre',
-    northUp: 'North up',
     zoomIn: 'Zoom in',
     zoomOut: 'Zoom out',
     search: 'Search',
-    searchPlaces: 'Search places and cities',
     close: 'Close',
-    destinations: {
-      favourites: 'Favourites',
-      headquarters: 'Headquarters',
-      yourGarage: 'Your garage',
-      findNearby: 'Find nearby',
-      alongRoute: 'Along the route',
-      recents: 'Recents',
-      kinds: {
-        fuel: 'Fuel',
-        service: 'Service',
-        garage: 'Garage',
-        dealer: 'Truck dealer',
-        company: 'Company',
-        parking: 'Rest area',
-        hotel: 'Hotel',
-        recruitment: 'Recruitment agency',
-        weigh: 'Weigh station',
-        ferry: 'Ferry',
-        train: 'Train',
-        city: 'City',
-      },
-      nearby: {
-        fuel: 'Fuel',
-        parking: 'Rest areas',
-        service: 'Service',
-        hotel: 'Hotels',
-        company: 'Companies',
-        dealer: 'Dealers',
-        ferry: 'Ferries',
-        city: 'Cities',
-      },
-      straightLine: (distance) => `${distance} away`,
-      alongTheRoute: (distance) => `${distance} along the route`,
-      stopAdds: (distance, time) => `Stop added · adds ${distance} and ${time}`,
-      notOnRoute: 'Stop added, but the game’s route doesn’t pass it',
-      plans: { fastest: 'Fastest', shortest: 'Shortest', smallRoads: 'Small roads', other: 'Another way' },
-      finding: 'Finding routes',
-      ownWay: 'Route set: the game takes its own way there',
-      go: 'Go',
-      addStop: 'Add stop',
-      endRoute: 'End route',
-      back: 'Back',
-      noResults: 'No results',
-      loading: 'Loading places',
-      noPlaces: 'No places on this map yet',
-      done: { go: 'Route set', addStop: 'Stop added', end: 'Route ended' },
-      alreadyThere: 'Already a stop on the route',
-      full: 'The route has 10 stops, the most the game allows',
-      onJob: 'On a job, the destination is the job’s',
-      noAnswer: 'The game didn’t answer',
-      elevated: 'The game is running as administrator, so WestPlay can’t see its route. Start it normally',
-      unsupported: 'This version of the game isn’t supported yet',
-      failed: 'The game couldn’t route there',
-    },
     keyboard: {
       space: 'space',
       returnKey: { search: 'Search', go: 'Go', done: 'Done' },
       shift: 'Shift',
-      capsLock: 'Caps lock',
       delete: 'Delete',
       nextKeyboard: 'Next keyboard',
       hide: 'Hide keyboard',
@@ -633,19 +392,7 @@ export const STRINGS: Record<Language, Strings> = {
     next: 'Next',
     shuffle: 'Shuffle',
     repeat: 'Repeat',
-    notPlaying: 'Not Playing',
-    openMusicApp: 'Open Apple Music, Spotify or YouTube Music on your PC.',
-    nothingLoaded: 'Nothing loaded',
     playing: 'Playing',
-    delivery: 'Delivery',
-    pickup: 'Pickup',
-    destination: 'Destination',
-    mapPoint: 'Map point',
-    arriveBy: (time) => `Arrive by ${time}`,
-    late: 'Late',
-    days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    weather: { clear: 'Clear', rain: 'Rain' },
-    weatherTurning: { clear: 'Clearing up', rain: 'Rain starting' },
     youtube: {
       search: 'Search YouTube',
       continueWatching: 'Continue watching',
@@ -695,6 +442,7 @@ export const STRINGS: Record<Language, Strings> = {
       seconds: (seconds) => `${seconds} seconds`,
     },
     spotify: {
+      podcasts: 'Podcasts & Shows',
       finishOnPc: 'Finish signing in on your PC: Spotify’s sign-in is open in a window on your desktop.',
       whatToPlay: 'What do you want to play?',
       home: 'Home',
@@ -714,7 +462,6 @@ export const STRINGS: Record<Language, Strings> = {
       artists: 'Artists',
       playlists: 'Playlists',
       albums: 'Albums',
-      podcasts: 'Podcasts & Shows',
       kinds: {
         playlist: 'Playlist',
         album: 'Album',
@@ -798,100 +545,6 @@ export const STRINGS: Record<Language, Strings> = {
       },
       explicit: 'E',
     },
-    appleMusic: {
-      tabs: { home: 'Home', new: 'New', radio: 'Radio', library: 'Library', search: 'Search' },
-      searchHint: 'Artists, Songs, Albums and More',
-      browseCategories: 'Browse Categories',
-      recentlySearched: 'Recently Searched',
-      clear: 'Clear',
-      topResults: 'Top Results',
-      songs: 'Songs',
-      artists: 'Artists',
-      albums: 'Albums',
-      playlists: 'Playlists',
-      stations: 'Stations',
-      noResults: 'No Results',
-      noResultsHint: 'Try a new search.',
-      seeAll: 'See All',
-      recentlyPlayed: 'Recently Played',
-      recentlyAdded: 'Recently Added',
-      kinds: {
-        album: 'Album',
-        playlist: 'Playlist',
-        artist: 'Artist',
-        station: 'Station',
-        song: 'Song',
-        curator: 'Category',
-        folder: 'Folder',
-      },
-      length: (songs, seconds) => {
-        const minutes = Math.round(seconds / 60)
-        const count = songs === 1 ? '1 song' : `${songs} songs`
-        if (minutes < 60) return `${count}, ${minutes === 1 ? '1 minute' : `${minutes} minutes`}`
-        const hours = Math.floor(minutes / 60)
-        const rest = minutes % 60
-        return `${count}, ${hours === 1 ? '1 hour' : `${hours} hours`}${rest ? ` ${rest} minutes` : ''}`
-      },
-      topSongs: 'Top Songs',
-      play: 'Play',
-      shuffle: 'Shuffle',
-      live: 'LIVE',
-      explicit: 'Explicit',
-      preview: 'Preview',
-      upNext: 'Up Next',
-      lyrics: 'Lyrics',
-      noLyrics: 'Lyrics aren’t available for this song.',
-      writtenBy: (names) => `Written By: ${names}`,
-      from: (name) => `From ${name}`,
-      favorite: 'Favourite',
-      favorited: 'Added to Favourites',
-      unfavorited: 'Removed from Favourites',
-      addToLibrary: 'Add to Library',
-      added: 'Added to Library',
-      signIn: 'Sign In',
-      signOut: 'Sign Out',
-      account: 'Account',
-      filter: 'Filter',
-      more: 'More',
-      all: { playlists: 'All Playlists', albums: 'All Albums', songs: 'All Songs' },
-      favorites: 'Favourites',
-      grid: 'Grid',
-      list: 'List',
-      find: 'Search',
-      sorts: {
-        name: 'Title',
-        '-dateAdded': 'Date Added',
-        '-lastPlayed': 'Last Played Date',
-        '-updated': 'Updated Date',
-        type: 'Playlist Type',
-      },
-      finishOnPc: 'Finish signing in on your PC: Apple Music’s sign-in is open in a window on your desktop.',
-      homePitch: {
-        title: 'Get more from Apple Music',
-        text: 'Sign in for picks made for you, what you played lately and your Library.',
-      },
-      libraryPitch: { title: 'Your Library', text: 'Sign in to see the music you’ve added.' },
-      promptTitle: 'Sign in to Apple Music',
-      promptFor: {
-        library: 'Sign in to add music to your Library.',
-        favorite: 'Sign in to favourite songs.',
-      },
-      notNow: 'Not Now',
-      previewBanner: { title: 'Listen to full songs', text: 'Sign in to play every song in full, not its preview.' },
-      empty: 'Nothing here yet.',
-      cantPlay: 'Apple Music can’t play this right now.',
-      failed: 'Couldn’t load this.',
-      tryAgain: 'Try Again',
-      back: 'Back',
-      close: 'Close',
-      nowPlaying: 'Now Playing',
-      next: 'Next',
-      previous: 'Previous',
-      repeat: 'Repeat',
-      volume: 'Volume',
-      mute: 'Mute',
-      unmute: 'Unmute',
-    },
     youtubeMusic: {
       tabs: { home: 'Home', explore: 'Explore', library: 'Library', search: 'Search' },
       searchHint: 'Search songs, artists, podcasts',
@@ -961,29 +614,22 @@ export const STRINGS: Record<Language, Strings> = {
       addedToQueue: 'Song added to queue',
       volume: 'Volume',
     },
-    weatherApp: {
-      myLocation: 'My Location',
-      nextChange: 'Next change',
-      inAbout: (time) => `In about ${time}`,
-      roads: 'Roads',
-      roadStates: { dry: 'Dry', damp: 'Damp', wet: 'Wet' },
-      roadTrends: { drying: 'Drying', gettingWet: 'Getting wetter' },
-      unavailable: 'The weather shows while the game runs.',
-    },
-    safari: {
+    chrome: {
       back: 'Back',
       forward: 'Forward',
       reload: 'Reload',
       stop: 'Stop',
-      go: 'Go',
       address: 'Search or enter website name',
       loading: 'Loading…',
       zoomIn: 'Zoom In',
       zoomOut: 'Zoom Out',
       restart: 'Restart',
-      outsideHost: 'Websites open in the WestPlay app.',
+      outsideHost: 'Websites open in the TruckersTV app.',
     },
     tv: {
+      fullScreen: 'Full Screen',
+      loadingHint: 'If it doesn’t open, leave the app and come back',
+      exitFullScreen: 'Exit Full Screen',
       sources: 'Sources',
       addProfile: 'Add Profile',
       manageProfiles: 'Manage Profiles',
@@ -993,7 +639,7 @@ export const STRINGS: Record<Language, Strings> = {
       kindAbout: {
         m3u: 'A link to an M3U or M3U8 list of channels',
         xtream: 'Your provider’s server, username and password',
-        videos: 'The videos in the folder chosen in WestPlay on your PC',
+        videos: 'The videos in the folder chosen in TruckersTV on your PC',
       },
       name: 'Profile name',
       link: 'Link',
@@ -1004,7 +650,6 @@ export const STRINGS: Record<Language, Strings> = {
       password: 'Password',
       save: 'Save',
       paste: 'Paste',
-      cancel: 'Cancel',
       back: 'Back',
       remove: 'Remove',
       suggested: 'Free channels (iptv-org)',
@@ -1014,7 +659,7 @@ export const STRINGS: Record<Language, Strings> = {
       noChannels: 'Nothing here',
       playlistFailed: 'The playlist couldn’t be loaded.',
       xtreamFailed: 'The server didn’t sign in. Check its address, username and password.',
-      noVideoFolder: 'Choose a videos folder in WestPlay on your PC: Customize › TV.',
+      noVideoFolder: 'Choose a videos folder in TruckersTV on your PC: Customize › TV.',
       noVideos: 'No videos in the folder.',
       streamFailed: 'This couldn’t be played.',
       live: 'Live',
@@ -1025,136 +670,71 @@ export const STRINGS: Record<Language, Strings> = {
       volumeDown: 'Volume down',
     },
     settings: {
-      appearance: 'Appearance',
       light: 'Light',
       dark: 'Dark',
-      automatic: 'Automatic',
-      automaticFooter: 'Dark at night and whenever the headlights are on, the way the truck’s light sensor does it.',
-      vehicleBar: 'Vehicle Bar',
-      vehicleBarFooter: 'The truck’s information bar beside WestPlay. Turned off, WestPlay fills the whole screen.',
       textSize: 'Text Size',
-      textSizeAbout: 'WestPlay’s apps will adjust to your preferred reading size below.',
-      wallpaper: 'Wallpaper',
-      dashboard: 'Dashboard',
-      widgets: 'Widgets',
-      showAlbumArt: 'Show Album Art',
+      textSizeAbout: 'TruckersTV’s apps will adjust to your preferred reading size below.',
       sound: 'Sound',
       equalizer: 'Equalizer',
       recommended: 'Recommended',
       custom: 'Custom',
       equalizerFooter:
-        'WestPlay plays your music through each truck’s own speakers, tuned for its cab. If you prefer a different sound, you can customise how every music app sounds, in every truck.',
+        'TruckersTV plays your music through each truck’s own speakers, tuned for its cab. If you prefer a different sound, you can customise how every music app sounds, in every truck.',
       low: 'Low',
       mid: 'Mid',
       high: 'High',
       resetEqualizer: 'Reset',
       back: 'Back',
     },
+    launcher: {
+      home: 'Home',
+      apps: 'Apps',
+      library: 'Library',
+      continue: 'Continue',
+      signIn: 'Sign in',
+      signingIn: 'Finish signing in on the PC',
+      arrange: 'Arrange apps',
+      arrangeHint: 'Press an app, then press where it goes',
+      arrangeDone: 'Done',
+      recent: 'Recent',
+      yourApps: 'Your apps',
+      search: 'Search',
+      searchHint: 'Search for apps',
+      noApps: 'No apps found',
+      categories: 'App categories',
+      categoryNames: {
+        entertainment: 'Entertainment',
+        music: 'Music & Audio',
+        video: 'Video Players',
+        sports: 'Sports',
+        tools: 'Tools',
+      },
+      sources: 'Media sources',
+      addSource: 'Add source',
+    },
     apps: {
-      maps: 'Maps',
-      music: 'Music',
+      ...WEB_APP_NAMES,
       spotify: 'Spotify',
       youtube: 'YouTube',
       youtubeMusic: 'YouTube Music',
-      safari: 'Safari',
-      tv: 'TV',
-      podcasts: 'Podcasts',
-      phone: 'Phone',
-      messages: 'Messages',
-      weather: 'Weather',
+      chrome: 'Chrome',
+      tv: 'Live TV',
       settings: 'Settings',
     },
-    notBuiltYet: 'Not built yet',
   },
   tr: {
-    decimal: ',',
-    arrival: 'varış',
     minutes: (minutes) => `${minutes} dk`,
     hours: (hours, minutes) => `${hours}:${minutes} sa`,
-    speedLimit: (limit) => `Hız sınırı ${limit}`,
     now: 'Şimdi',
     then: 'Sonra',
-    arrive: 'Varış noktasına ulaşın',
-    turns: {
-      'slight-left': 'Hafif sola dönün',
-      left: 'Sola dönün',
-      'sharp-left': 'Keskin sola dönün',
-      'slight-right': 'Hafif sağa dönün',
-      right: 'Sağa dönün',
-      'sharp-right': 'Keskin sağa dönün',
-      'u-turn': 'U dönüşü yapın',
-      'keep-left': 'Soldan devam edin',
-      'keep-right': 'Sağdan devam edin',
-      'exit-left': 'Soldaki çıkışa girin',
-      'exit-right': 'Sağdaki çıkışa girin',
-    },
-    roundabout: (exit) => `Dönel kavşakta ${exit}. çıkıştan çıkın`,
-    recentre: 'Ortala',
-    northUp: 'Kuzey yukarı',
     zoomIn: 'Yakınlaştır',
     zoomOut: 'Uzaklaştır',
     search: 'Ara',
-    searchPlaces: 'Yer ve şehir arayın',
     close: 'Kapat',
-    destinations: {
-      favourites: 'Favoriler',
-      headquarters: 'Merkez',
-      yourGarage: 'Garajınız',
-      findNearby: 'Yakındakiler',
-      alongRoute: 'Rota üzerinde',
-      recents: 'Son kullanılanlar',
-      kinds: {
-        fuel: 'Akaryakıt',
-        service: 'Servis',
-        garage: 'Garaj',
-        dealer: 'Tır bayisi',
-        company: 'Şirket',
-        parking: 'Mola yeri',
-        hotel: 'Otel',
-        recruitment: 'İş kurumu',
-        weigh: 'Denetim istasyonu',
-        ferry: 'Feribot',
-        train: 'Tren',
-        city: 'Şehir',
-      },
-      nearby: {
-        fuel: 'Akaryakıt',
-        parking: 'Mola yerleri',
-        service: 'Servis',
-        hotel: 'Oteller',
-        company: 'Şirketler',
-        dealer: 'Bayiler',
-        ferry: 'Feribotlar',
-        city: 'Şehirler',
-      },
-      straightLine: (distance) => `${distance} uzaklıkta`,
-      alongTheRoute: (distance) => `Rotada ${distance} ileride`,
-      stopAdds: (distance, time) => `Durak eklendi · ${distance} ve ${time} ekliyor`,
-      notOnRoute: 'Durak eklendi, ama oyunun rotası oradan geçmiyor',
-      plans: { fastest: 'En hızlı', shortest: 'En kısa', smallRoads: 'Küçük yollar', other: 'Başka bir yol' },
-      finding: 'Rotalar bulunuyor',
-      ownWay: 'Rota ayarlandı: oyun oraya kendi yolundan gidiyor',
-      go: 'Git',
-      addStop: 'Durak ekle',
-      endRoute: 'Rotayı bitir',
-      back: 'Geri',
-      noResults: 'Sonuç yok',
-      loading: 'Yerler yükleniyor',
-      noPlaces: 'Bu haritada henüz yer yok',
-      done: { go: 'Rota ayarlandı', addStop: 'Durak eklendi', end: 'Rota bitirildi' },
-      alreadyThere: 'Zaten rotada bir durak',
-      full: 'Rotada 10 durak var, oyunun izin verdiği en fazla',
-      onJob: 'İşteyken varış noktası işin',
-      noAnswer: 'Oyun yanıt vermedi',
-      elevated: 'Oyun yönetici olarak çalışıyor, WestPlay rotasını göremiyor. Oyunu normal başlatın',
-      unsupported: 'Oyunun bu sürümü henüz desteklenmiyor',
-      failed: 'Oyun oraya rota çizemedi',
-    },
     keyboard: {
       space: 'boşluk',
       returnKey: { search: 'Ara', go: 'Git', done: 'Bitti' },
       shift: 'Büyük harf',
-      capsLock: 'Büyük harf kilidi',
       delete: 'Sil',
       nextKeyboard: 'Sonraki klavye',
       hide: 'Klavyeyi gizle',
@@ -1171,19 +751,7 @@ export const STRINGS: Record<Language, Strings> = {
     next: 'Sonraki',
     shuffle: 'Karıştır',
     repeat: 'Tekrarla',
-    notPlaying: 'Çalmıyor',
-    openMusicApp: 'Bilgisayarınızda Apple Music, Spotify veya YouTube Music’i açın.',
-    nothingLoaded: 'Hiçbir şey yüklenmedi',
     playing: 'Çalıyor',
-    delivery: 'Teslimat',
-    pickup: 'Yükleme',
-    destination: 'Hedef',
-    mapPoint: 'Harita noktası',
-    arriveBy: (time) => `Son varış ${time}`,
-    late: 'Gecikti',
-    days: ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'],
-    weather: { clear: 'Açık', rain: 'Yağmur' },
-    weatherTurning: { clear: 'Açılıyor', rain: 'Yağmur başlıyor' },
     youtube: {
       search: 'YouTube’da ara',
       continueWatching: 'İzlemeye devam et',
@@ -1233,6 +801,7 @@ export const STRINGS: Record<Language, Strings> = {
       seconds: (seconds) => `${seconds} saniye`,
     },
     spotify: {
+      podcasts: 'Podcast’ler ve Programlar',
       finishOnPc: 'Oturum açmayı bilgisayarınızda tamamlayın: Spotify’ın oturum açma penceresi masaüstünüzde açık.',
       whatToPlay: 'Ne çalmak istiyorsun?',
       home: 'Ana sayfa',
@@ -1252,7 +821,6 @@ export const STRINGS: Record<Language, Strings> = {
       artists: 'Sanatçılar',
       playlists: 'Çalma listeleri',
       albums: 'Albümler',
-      podcasts: 'Podcast’ler ve Programlar',
       kinds: {
         playlist: 'Çalma listesi',
         album: 'Albüm',
@@ -1339,101 +907,6 @@ export const STRINGS: Record<Language, Strings> = {
       },
       explicit: 'E',
     },
-    appleMusic: {
-      tabs: { home: 'Ana Sayfa', new: 'Yeni', radio: 'Radyo', library: 'Kütüphane', search: 'Ara' },
-      searchHint: 'Sanatçılar, Şarkılar, Albümler ve Daha Fazlası',
-      browseCategories: 'Kategorilere Göz At',
-      recentlySearched: 'Son Aramalar',
-      clear: 'Temizle',
-      topResults: 'En İyi Sonuçlar',
-      songs: 'Şarkılar',
-      artists: 'Sanatçılar',
-      albums: 'Albümler',
-      playlists: 'Çalma Listeleri',
-      stations: 'İstasyonlar',
-      noResults: 'Sonuç Yok',
-      noResultsHint: 'Yeni bir arama deneyin.',
-      seeAll: 'Tümünü Gör',
-      recentlyPlayed: 'Son Çalınanlar',
-      recentlyAdded: 'Son Eklenenler',
-      kinds: {
-        album: 'Albüm',
-        playlist: 'Çalma Listesi',
-        artist: 'Sanatçı',
-        station: 'İstasyon',
-        song: 'Şarkı',
-        curator: 'Kategori',
-        folder: 'Klasör',
-      },
-      length: (songs, seconds) => {
-        const minutes = Math.round(seconds / 60)
-        if (minutes < 60) return `${songs} şarkı, ${minutes} dakika`
-        const rest = minutes % 60
-        return `${songs} şarkı, ${Math.floor(minutes / 60)} saat${rest ? ` ${rest} dakika` : ''}`
-      },
-      topSongs: 'Popüler Şarkılar',
-      play: 'Çal',
-      shuffle: 'Karıştır',
-      live: 'CANLI',
-      explicit: 'Müstehcen',
-      preview: 'Önizleme',
-      upNext: 'Sıradakiler',
-      lyrics: 'Sözler',
-      noLyrics: 'Bu şarkının sözleri yok.',
-      writtenBy: (names) => `Yazanlar: ${names}`,
-      from: (name) => `Kaynak: ${name}`,
-      favorite: 'Favori',
-      favorited: 'Favorilere Eklendi',
-      unfavorited: 'Favorilerden Kaldırıldı',
-      addToLibrary: 'Kütüphaneye Ekle',
-      added: 'Kütüphaneye Eklendi',
-      signIn: 'Giriş Yap',
-      signOut: 'Çıkış Yap',
-      account: 'Hesap',
-      filter: 'Filtre',
-      more: 'Diğer',
-      all: { playlists: 'Tüm Çalma Listeleri', albums: 'Tüm Albümler', songs: 'Tüm Şarkılar' },
-      favorites: 'Favoriler',
-      grid: 'Izgara',
-      list: 'Liste',
-      find: 'Ara',
-      sorts: {
-        name: 'Başlık',
-        '-dateAdded': 'Eklenme Tarihi',
-        '-lastPlayed': 'Son Çalınma Tarihi',
-        '-updated': 'Güncellenme Tarihi',
-        type: 'Çalma Listesi Türü',
-      },
-      finishOnPc: 'Girişi bilgisayarınızda tamamlayın: Apple Music’in giriş penceresi masaüstünüzde açık.',
-      homePitch: {
-        title: 'Apple Music’ten daha fazlası',
-        text: 'Size özel seçimler, son dinledikleriniz ve Kütüphaneniz için giriş yapın.',
-      },
-      libraryPitch: { title: 'Kütüphaneniz', text: 'Eklediğiniz müziği görmek için giriş yapın.' },
-      promptTitle: 'Apple Music’e Giriş Yapın',
-      promptFor: {
-        library: 'Kütüphanenize müzik eklemek için giriş yapın.',
-        favorite: 'Şarkıları favorilere eklemek için giriş yapın.',
-      },
-      notNow: 'Şimdi Değil',
-      previewBanner: {
-        title: 'Şarkıların tamamını dinleyin',
-        text: 'Her şarkıyı önizlemesi yerine tamamen çalmak için giriş yapın.',
-      },
-      empty: 'Burada henüz bir şey yok.',
-      cantPlay: 'Apple Music bunu şu anda çalamıyor.',
-      failed: 'Yüklenemedi.',
-      tryAgain: 'Yeniden Dene',
-      back: 'Geri',
-      close: 'Kapat',
-      nowPlaying: 'Şimdi Çalıyor',
-      next: 'Sonraki',
-      previous: 'Önceki',
-      repeat: 'Tekrarla',
-      volume: 'Ses',
-      mute: 'Sesi Kapat',
-      unmute: 'Sesi Aç',
-    },
     youtubeMusic: {
       tabs: { home: 'Ana Sayfa', explore: 'Keşfet', library: 'Kitaplık', search: 'Ara' },
       searchHint: 'Şarkı, sanatçı, podcast ara',
@@ -1503,29 +976,22 @@ export const STRINGS: Record<Language, Strings> = {
       addedToQueue: 'Şarkı sıraya eklendi',
       volume: 'Ses',
     },
-    weatherApp: {
-      myLocation: 'Konumum',
-      nextChange: 'Sonraki değişim',
-      inAbout: (time) => `Yaklaşık ${time} sonra`,
-      roads: 'Yollar',
-      roadStates: { dry: 'Kuru', damp: 'Nemli', wet: 'Islak' },
-      roadTrends: { drying: 'Kuruyor', gettingWet: 'Islanıyor' },
-      unavailable: 'Hava durumu oyun açıkken görünür.',
-    },
-    safari: {
+    chrome: {
       back: 'Geri',
       forward: 'İleri',
       reload: 'Yenile',
       stop: 'Durdur',
-      go: 'Git',
       address: 'Ara veya web sitesi adı gir',
       loading: 'Yükleniyor…',
       zoomIn: 'Yakınlaştır',
       zoomOut: 'Uzaklaştır',
       restart: 'Yeniden başlat',
-      outsideHost: 'Web siteleri WestPlay uygulamasında açılır.',
+      outsideHost: 'Web siteleri TruckersTV uygulamasında açılır.',
     },
     tv: {
+      fullScreen: 'Tam Ekran',
+      loadingHint: 'Eğer açılmazsa uygulamadan çıkıp tekrar girin',
+      exitFullScreen: 'Tam ekrandan çık',
       sources: 'Kaynaklar',
       addProfile: 'Profil Ekle',
       manageProfiles: 'Profilleri Yönet',
@@ -1535,7 +1001,7 @@ export const STRINGS: Record<Language, Strings> = {
       kindAbout: {
         m3u: 'Kanalların M3U veya M3U8 listesinin linki',
         xtream: 'Sağlayıcının sunucusu, kullanıcı adı ve şifresi',
-        videos: 'PC’deki WestPlay’de seçilen klasördeki videolar',
+        videos: 'PC’deki TruckersTV’de seçilen klasördeki videolar',
       },
       name: 'Profil adı',
       link: 'Link',
@@ -1546,7 +1012,6 @@ export const STRINGS: Record<Language, Strings> = {
       password: 'Şifre',
       save: 'Kaydet',
       paste: 'Yapıştır',
-      cancel: 'Vazgeç',
       back: 'Geri',
       remove: 'Sil',
       suggested: 'Ücretsiz kanallar (iptv-org)',
@@ -1556,7 +1021,7 @@ export const STRINGS: Record<Language, Strings> = {
       noChannels: 'Burada bir şey yok',
       playlistFailed: 'Liste yüklenemedi.',
       xtreamFailed: 'Sunucuya giriş yapılamadı. Adresi, kullanıcı adını ve şifreyi kontrol et.',
-      noVideoFolder: 'PC’deki WestPlay’de bir video klasörü seç: Özelleştir › TV.',
+      noVideoFolder: 'PC’deki TruckersTV’de bir video klasörü seç: Özelleştir › TV.',
       noVideos: 'Klasörde video yok.',
       streamFailed: 'Bu oynatılamadı.',
       live: 'Canlı',
@@ -1567,46 +1032,57 @@ export const STRINGS: Record<Language, Strings> = {
       volumeDown: 'Sesi kıs',
     },
     settings: {
-      appearance: 'Görünüm',
       light: 'Açık',
       dark: 'Koyu',
-      automatic: 'Otomatik',
-      automaticFooter: 'Geceleri ve farlar her yandığında koyu; tıpkı kamyonun ışık sensörü gibi.',
-      vehicleBar: 'Araç Çubuğu',
-      vehicleBarFooter: 'WestPlay’in yanındaki kamyon bilgi çubuğu. Kapatırsan WestPlay tüm ekranı kaplar.',
       textSize: 'Metin Boyutu',
-      textSizeAbout: 'WestPlay’in uygulamaları aşağıda seçtiğin okuma boyutuna göre ayarlanır.',
-      wallpaper: 'Duvar Kâğıdı',
-      dashboard: 'Gösterge Paneli',
-      widgets: 'Widget’lar',
-      showAlbumArt: 'Albüm Kapağını Göster',
+      textSizeAbout: 'TruckersTV’in uygulamaları aşağıda seçtiğin okuma boyutuna göre ayarlanır.',
       sound: 'Ses',
       equalizer: 'Ekolayzır',
       recommended: 'Önerilen',
       custom: 'Özel',
       equalizerFooter:
-        'WestPlay müziğini her kamyonun kendi hoparlörlerinden, kabinine göre ayarlanmış olarak çalar. Farklı bir ses istersen, her müzik uygulamasının her kamyonda nasıl çalacağını özelleştirebilirsin.',
+        'TruckersTV müziğini her kamyonun kendi hoparlörlerinden, kabinine göre ayarlanmış olarak çalar. Farklı bir ses istersen, her müzik uygulamasının her kamyonda nasıl çalacağını özelleştirebilirsin.',
       low: 'Düşük',
       mid: 'Orta',
       high: 'Yüksek',
       resetEqualizer: 'Sıfırla',
       back: 'Geri',
     },
+    launcher: {
+      home: 'Ana Sayfa',
+      apps: 'Uygulamalar',
+      library: 'Kitaplık',
+      continue: 'Devam et',
+      signIn: 'Giriş yap',
+      signingIn: 'PC’de giriş yapın',
+      arrange: 'Uygulamaları sırala',
+      arrangeHint: 'Bir uygulamaya basın, sonra gideceği yere basın',
+      arrangeDone: 'Bitti',
+      recent: 'Son kullanılanlar',
+      yourApps: 'Uygulamalarınız',
+      search: 'Ara',
+      searchHint: 'Uygulama ara',
+      noApps: 'Uygulama bulunamadı',
+      categories: 'Uygulama kategorileri',
+      categoryNames: {
+        entertainment: 'Eğlence',
+        music: 'Müzik ve Ses',
+        video: 'Video Oynatıcılar',
+        sports: 'Spor',
+        tools: 'Araçlar',
+      },
+      sources: 'Medya kaynakları',
+      addSource: 'Kaynak ekle',
+    },
     apps: {
-      maps: 'Haritalar',
-      music: 'Müzik',
+      ...WEB_APP_NAMES,
       spotify: 'Spotify',
       youtube: 'YouTube',
       youtubeMusic: 'YouTube Music',
-      safari: 'Safari',
-      tv: 'TV',
-      podcasts: 'Podcast’ler',
-      phone: 'Telefon',
-      messages: 'Mesajlar',
-      weather: 'Hava Durumu',
+      chrome: 'Chrome',
+      tv: 'CanlıTV',
       settings: 'Ayarlar',
     },
-    notBuiltYet: 'Henüz hazır değil',
   },
 }
 

@@ -18,12 +18,12 @@ import {
 } from '../../../shared/host'
 import type { MediaSource } from '../../../shared/media'
 import { createAsking } from '../asking'
-import { positionOf, type Timed } from '../music/time'
+import { positionOf, type Timed } from '../time'
 import { keptAccount } from '../youtube/account'
 import type { Hole } from '../youtube/youtube'
 import { previewAnswer, previewPlay } from './preview'
 
-export { positionOf } from '../music/time'
+export { positionOf } from '../time'
 export type {
   YouTubeMusicArtist,
   YouTubeMusicChip,
@@ -37,7 +37,7 @@ export type {
 } from '../../../shared/host'
 
 /**
- * The YouTube Music app's state: WestPlay's own app in the look of YouTube Music's own tablet app. YouTube
+ * The YouTube Music app's state: TruckersTV's own app in the look of YouTube Music's own tablet app. YouTube
  * Music's web player, run by the host in a hidden WebView (crates/host youtube_music.rs), plays and answers the
  * app's questions (Home, Explore, a search, an album's songs) from its own page. The app shows what it asked for
  * at once (a song pressed shows here before YouTube Music says it plays), then follows what YouTube Music says
@@ -45,7 +45,7 @@ export type {
  *
  * Signed out, YouTube Music is what its web player is then: Home, Explore and Search, every song playing. The
  * sign-in is YouTube's (they share it): Google's own window on the PC's desktop. The host says whether it's
- * signed in and the account's picture, nothing more; those two are kept (shown at once as WestPlay
+ * signed in and the account's picture, nothing more; those two are kept (shown at once as TruckersTV
  * starts, replaced as YouTube Music's page says them). Answers are only shown, held for this session.
  */
 
@@ -130,7 +130,7 @@ const SEARCHES_KEPT = 12
 export const useYouTubeMusic = create<YouTubeMusicState>()(
   persist(
     (): YouTubeMusicState => ({
-      // Outside WestPlay (a plain browser) there's no host to say: the preview starts signed out.
+      // Outside TruckersTV (a plain browser) there's no host to say: the preview starts signed out.
       signedIn: isInHost() ? null : false,
       playing: null,
       signingIn: false,
@@ -155,10 +155,10 @@ export const useYouTubeMusic = create<YouTubeMusicState>()(
       name: 'westplay.youtubeMusic',
       version: 1,
       storage: createJSONStorage(() => localStorage),
-      // Signed in or not and the account's picture (shown at once as WestPlay starts), and
+      // Signed in or not and the account's picture (shown at once as TruckersTV starts), and
       // the searches made. Nothing else.
       partialize: (state) => ({ signedIn: state.signedIn, avatar: state.avatar, searches: state.searches }),
-      // Kept by an earlier WestPlay (or edited): only what's sound.
+      // Kept by an earlier TruckersTV (or edited): only what's sound.
       merge: (stored, current) => {
         const { signedIn, avatar, searches } = (stored ?? {}) as Partial<YouTubeMusicState>
         const account = isInHost() ? keptAccount({ signedIn, avatar }) : null

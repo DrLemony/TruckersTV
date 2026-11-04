@@ -1,14 +1,8 @@
-//! The companion's setup, for its onboarding: finding the game (or the player showing where it is), checking
-//! it (its version, DLCs, the profiles' map mods, the truck screens WestPlay can draw on), and installing
-//! WestPlay into it (the plugin, and the game mod built from the player's own game). The map is then built
-//! by the host (`westplay_host::maps`), for the game set up here. What setup did is kept in `setup.json`
-//! (`westplay_setup::record`): the game, and whether the onboarding was finished.
+//! The companion's setup: finding the game (or the player showing where it is), and installing TruckersTV into it (the
+//! plugin, and the game mod built from the player's own game). What setup did is kept in `setup.json`
+//! (`westplay_setup::record`): the game, and whether the first run was finished.
 //!
-//! Errors the onboarding knows come back as keys it puts in the player's language (`notTheGame`,
-//! `gameGone`, `noPlugin`, `noDocuments`); others (the system's own) as they are.
-//!
-//! Nothing here is kept or sent anywhere: profile and mod names are shown to the player, never written down
-//! (and a Road to Heavy mod's never even shown: its licence file's name holds the player's key).
+//! Errors come back as they are: the companion shows them.
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -17,37 +11,28 @@ use std::time::{Duration, SystemTime};
 use serde::Serialize;
 use tauri::{AppHandle, Manager, State, WebviewWindow};
 use westplay_host::log;
-use westplay_host::maps::SetUpGame;
 use westplay_mapdata::files::GameFiles;
 use westplay_setup::game::{self, FoundBy, Game};
 use westplay_setup::plugin::{self, InstallError};
 use westplay_setup::record::Record;
-use westplay_setup::trucks::{self, Fit};
-use westplay_setup::{cab_mark, dlc, game_mod, pick, places, profiles, tablet};
+use westplay_setup::{cab_mark, game_mod, pick, places, profiles};
 
-/// What setup did, and the game it set up, shared with the host (for the map).
+/// What setup did.
 pub struct SetupStore(Arc<Inner>);
 
 struct Inner {
-    /// WestPlay's config folder, where the record is kept.
+    /// TruckersTV's config folder, where the record is kept.
     dir: PathBuf,
     record: Mutex<Record>,
-    game: Arc<SetUpGame>,
-    /// WestPlay's plugin, to install (`None`: this build of WestPlay has none).
+    /// TruckersTV's plugin, to install (`None`: this build of TruckersTV has none).
     plugin: Option<PathBuf>,
 }
 
 impl SetupStore {
-    /// The record kept in `dir`, and the game it names for the host.
+    /// The record kept in `dir`.
     pub fn load(dir: &Path, app: &AppHandle) -> Self {
         let record = Record::load(dir);
-        let game = Arc::new(SetUpGame::new(record.game.clone()));
-        Self(Arc::new(Inner { dir: dir.to_path_buf(), record: Mutex::new(record), game, plugin: plugin_file(app) }))
-    }
-
-    /// The game set up, for the host.
-    pub fn game(&self) -> Arc<SetUpGame> {
-        self.0.game.clone()
+        Self(Arc::new(Inner { dir: dir.to_path_buf(), record: Mutex::new(record), plugin: plugin_file(app) }))
     }
 }
 
@@ -59,13 +44,12 @@ impl Inner {
     fn update(&self, change: impl FnOnce(&mut Record)) -> Result<(), String> {
         let mut record = self.record.lock().unwrap_or_else(|e| e.into_inner());
         change(&mut record);
-        record.save(&self.dir).map_err(|e| format!("Couldn't save WestPlay's setup: {e}"))?;
-        self.game.set(record.game.clone());
+        record.save(&self.dir).map_err(|e| format!("Couldn't save TruckersTV's setup: {e}"))?;
         Ok(())
     }
 }
 
-/// WestPlay's plugin: shipped beside the app (its resources, or the app's own folder in an unbundled release
+/// TruckersTV's plugin: shipped beside the app (its resources, or the app's own folder in an unbundled release
 /// build); while developing, the release build of it (the one the dev loop builds and installs).
 fn plugin_file(app: &AppHandle) -> Option<PathBuf> {
     let candidates: Vec<PathBuf> = if cfg!(debug_assertions) {
@@ -86,7 +70,7 @@ pub struct GameInfo {
     /// `steam`, `installed` (another store's, or SCS's own installer) or `chosen`.
     found_by: &'static str,
     version: Option<String>,
-    /// WestPlay has been tried with this version.
+    /// TruckersTV has been tried with this version.
     tested: bool,
     dlcs: usize,
 }
@@ -112,15 +96,15 @@ impl From<&Game> for GameInfo {
 pub struct SetupState {
     /// The onboarding was gone through: the companion opens on its own pages.
     finished: bool,
-    /// The game WestPlay is set up in, if it is (and it's still there).
+    /// The game TruckersTV is set up in, if it is (and it's still there).
     game: Option<GameInfo>,
-    /// WestPlay was updated since it put its plugin and mod into that game: the companion puts the new ones
+    /// TruckersTV was updated since it put its plugin and mod into that game: the companion puts the new ones
     /// in (`install_into_game`) once the game is closed. Never in a development build (its plugin is the
     /// development loop's to install).
     updated: bool,
     /// Every install of the game found on the PC.
     found: Vec<GameInfo>,
-    /// The game is running (setup installs into it and builds its map while it's closed).
+    /// The game is running (setup installs into it while it's closed).
     game_running: bool,
     /// The onboarding's language, a game language code (`tr_tr`), if it's known: see `onboarding_language`.
     /// Otherwise it follows Windows'.
@@ -146,8 +130,7 @@ pub async fn setup_state(store: State<'_, SetupStore>) -> Result<SetupState, Str
     .await
 }
 
-/// The onboarding speaks the game's language, as WestPlay does in the cab (its words, and the map's place
-/// names): the one the game was last set to (its `config.cfg`), or one set for trying it out
+/// The onboarding speaks the game's language, as TruckersTV does in the cab: the one the game was last set to (its `config.cfg`), or one set for trying it out
 /// (`WESTPLAY_LANGUAGE`). A player who never started the game has neither: the onboarding then follows
 /// Windows'.
 fn onboarding_language() -> Option<String> {
@@ -161,13 +144,6 @@ fn onboarding_language() -> Option<String> {
 #[tauri::command]
 pub fn game_running() -> bool {
     game::running()
-}
-
-/// The player asks for every profile's map to be prepared again (the Map page): the host builds each anew in
-/// turn, failed ones included.
-#[tauri::command]
-pub fn prepare_maps_again(store: State<'_, SetupStore>) {
-    store.0.game.prepare_maps_again();
 }
 
 /// Asks the player where the game is (Windows' folder picker, titled `title`, in their language): the game
@@ -186,50 +162,8 @@ pub async fn choose_game_folder(window: WebviewWindow, title: String) -> Result<
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameCheck {
-    game: GameInfo,
-    /// How many DLCs the game has (`westplay_setup::dlc`: one per Steam app, paint jobs and flags packs
-    /// included).
-    dlcs: usize,
-    /// Those that change the map (map expansions, and trailer packs with their companies), by name.
-    map_dlcs: Vec<String>,
-    /// The player's profiles, the most recently saved first.
-    profiles: Vec<ProfileCheck>,
-    /// The trucks WestPlay is made for (`westplay_setup::trucks`), and whether the player can have it in
-    /// each: `ready`, `notInGame`, or `notYet` (in the game, but WestPlay doesn't draw on its screen yet).
-    trucks: Vec<TruckCheck>,
-    /// Why WestPlay's mod can't be built from this game, if it can't (a game version it doesn't know yet).
-    mod_problem: Option<String>,
-    /// WestPlay's plugin in the game: `missing`, `current`, or `different` (another version of it).
+    /// TruckersTV's plugin in the game: `missing`, `current`, or `different` (another version of it).
     plugin: &'static str,
-    /// Other CarPlay apps installed in the game, which take the trucks' screens (`ymnOne`): to be removed.
-    other_apps: Vec<&'static str>,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TruckCheck {
-    /// Its id (`scania-smart-dash`), for the names with words in them, in the player's language.
-    id: &'static str,
-    name: &'static str,
-    fit: &'static str,
-    /// A mod's truck (missing: no profile plays with it), not the game's.
-    from_mod: bool,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ProfileCheck {
-    name: String,
-    /// Its folder: the host's state of its map names it (`westplay_host::maps::ProfileMap`).
-    dir: String,
-    /// The map it plays: `europe`, or a standalone map mod's.
-    map: String,
-    /// The mods that change its map, as the game names them.
-    map_mods: Vec<String>,
-    /// Map mods WestPlay couldn't read (a format it doesn't know): their roads are left out of its map.
-    unreadable: usize,
-    /// It plays HVT's map, which WestPlay doesn't allow (no map for it; nothing of it named).
-    hvt_map: bool,
 }
 
 #[tauri::command]
@@ -237,101 +171,41 @@ pub async fn check_game(dir: PathBuf, store: State<'_, SetupStore>) -> Result<Ga
     let ours = store.0.plugin.clone();
     blocking(move || {
         let game = Game::recognise(&dir).ok_or("gameGone")?;
-        let (profiles, installed) = match places::game_documents() {
-            Some(documents) => {
-                let userdata = places::steam().map(|steam| steam.join("userdata"));
-                let found = profiles::find(&documents, userdata.as_deref(), Some(&game));
-                (found, profiles::installed(&documents, Some(&game)))
-            }
-            None => (Vec::new(), Vec::new()),
-        };
-        let all_profiles = profiles;
-        let profiles = all_profiles
-            .iter()
-            .map(|profile| {
-                let hvt_map = profile.plays_hvt_map();
-                let map_mods: Vec<_> = profile.map_mods().filter(|m| !hvt_map && !m.is_hvt_map()).collect();
-                ProfileCheck {
-                    name: profile.name.clone(),
-                    dir: profile.dir.to_string_lossy().into_owned(),
-                    map: profile.map.clone(),
-                    unreadable: map_mods.iter().filter(|m| m.problem.is_some()).count(),
-                    map_mods: map_mods.iter().map(|m| m.name.clone()).collect(),
-                    hvt_map,
-                }
-            })
-            .collect();
-        let files = GameFiles::install(&game.dir).map_err(|e| e.to_string())?;
-        let screen_mods = game_mod::mod_screen_mods(&installed_mod_files(&game));
-        let (patched, mod_problem) = match game_mod::build(&files, &[], &screen_mods, &cab_mark::Marks::default()) {
-            Ok((_, built)) => (built.patched, None),
-            Err(problem) => (Vec::new(), Some(problem.to_string())),
-        };
-        let trucks = trucks::fit(&files, &patched, &all_profiles, &installed)
-            .into_iter()
-            .map(|(truck, fit)| TruckCheck {
-                id: truck.id,
-                name: truck.name,
-                from_mod: matches!(truck.source, trucks::Source::Mod(_)),
-                fit: match fit {
-                    Fit::Ready => "ready",
-                    Fit::NotInGame => "notInGame",
-                    Fit::NotYet => "notYet",
-                },
-            })
-            .collect();
-        let dlcs = dlc::read(&game);
         let plugin = match ours.as_deref().map(|ours| plugin::state(&game, ours)) {
             Some(Ok(plugin::State::Current)) => "current",
             Some(Ok(plugin::State::Different)) => "different",
             _ if game.plugins_dir().join(plugin::FILE_NAME).is_file() => "different",
             _ => "missing",
         };
-        Ok(GameCheck {
-            dlcs: dlc::count(&dlcs),
-            map_dlcs: dlcs.iter().filter(|dlc| dlc.map).map(|dlc| dlc.name.clone()).collect(),
-            game: GameInfo::from(&game),
-            profiles,
-            trucks,
-            mod_problem,
-            plugin,
-            other_apps: plugin::other_apps(&game),
-        })
+        Ok(GameCheck { plugin })
     })
     .await
 }
 
-/// The mod built for `game` and its installed mods, and the marks of the vehicles its tablet shows nothing in
-/// (`tablet::write_apart`).
-fn build_mod(game: &Game) -> Result<(Vec<u8>, game_mod::Built, Vec<u64>), String> {
+/// The mod built for `game` and its installed mods.
+fn build_mod(game: &Game) -> Result<(Vec<u8>, game_mod::Built), String> {
     let files = GameFiles::install(&game.dir).map_err(|e| e.to_string())?;
-    let mods = installed_mod_files(game);
-    let (mod_trucks, apart) = tablet::mod_trucks_and_marks(&mods);
-    let marks = cab_mark::for_tablet(&files, &mods, &mod_trucks);
-    let (bytes, built) =
-        game_mod::build(&files, &mod_trucks, &game_mod::mod_screen_mods(&mods), &marks).map_err(|e| e.to_string())?;
-    Ok((bytes, built, apart))
+    let marks = cab_mark::for_tv(&files, &installed_mod_files(game));
+    Ok(game_mod::build(&files, &marks))
 }
 
-/// The installed mods' files (active in a profile or not), for the tablet's trucks and the mod vehicles' screens.
+/// The installed mods' files (active in a profile or not), for the dashboards the cab's mark goes in.
 fn installed_mod_files(game: &Game) -> Vec<PathBuf> {
     let documents = places::game_documents();
     let installed = documents.map(|documents| profiles::installed_files(&documents, Some(game)));
     installed.unwrap_or_default().into_iter().map(|(files, _)| files).collect()
 }
 
-/// How often the installed mods are looked at for trucks the tablet isn't in yet, and mod vehicles' screens.
+/// How often the game and the installed mods are looked at.
 const MODS_LOOK: Duration = Duration::from_secs(30);
 
-/// What WestPlay's mod was last worked out from: the game (its folder, version and DLCs) and each installed mod's
+/// What TruckersTV's mod was last worked out from: the game (its folder, version and DLCs) and each installed mod's
 /// files (their path, size and when they last changed).
 type ModsStamp = (PathBuf, Option<String>, usize, Vec<(PathBuf, u64, Option<SystemTime>)>);
 
-/// Keeps WestPlay's mod as the installed mods want it: the tablet in every truck with its slots, the game's and its
-/// installed mods' (owner 2026-10-24: "any truck, of any mod"), the screens of the mod vehicles WestPlay draws
-/// on (Oyuncuyusbis' coaches: a bus mod installed, updated or taken out), and the cab's mark in those trucks'
-/// dashboards (`cab_mark`: a mod's script updated, or another copy of it installed). While the game is closed, once the
-/// installed mods change, the mod is made again if it isn't so (the plugin mounts it as the game starts).
+/// Keeps the mod as the game and the installed mods want it: the TV placed in the trucks the game has, and the cab's
+/// mark in their dashboards (`cab_mark`: a mod's script updated, or another copy of it installed). While the game is
+/// closed, once they change, the mod is made again if it isn't so (the plugin mounts it as the game starts).
 pub fn watch_installed_mods(store: &SetupStore) {
     let inner = store.0.clone();
     let watch = move || {
@@ -342,7 +216,7 @@ pub fn watch_installed_mods(store: &SetupStore) {
         }
     };
     if let Err(error) = std::thread::Builder::new().name("westplay-mods".into()).spawn(watch) {
-        log!("setup: can't watch the installed mods for WestPlay's mod: {error}");
+        log!("setup: can't watch the installed mods for TruckersTV's mod: {error}");
     }
 }
 
@@ -373,48 +247,17 @@ fn look_at_mods(inner: &Inner, looked: &mut Option<ModsStamp>) {
         Ok(files) => files,
         Err(error) => return log!("setup: the installed mods: the game can't be read: {error}"),
     };
-    let (mod_trucks, apart) = tablet::mod_trucks_and_marks(&mods);
-    // The vehicles the tablet shows nothing in, as the installed mods have them now (the plugin reads them as the
-    // truck changes).
-    if let Some(dir) = ours.parent()
-        && let Err(error) = tablet::write_apart(&apart, dir)
-    {
-        log!("setup: the tablet's vehicles to keep it blank in not written: {error}");
-    }
-    let screen_mods = game_mod::mod_screen_mods(&mods);
-    let own = tablet::trucks(&files).unwrap_or_default();
-    let wanted: Vec<tablet::Spot> = own
-        .into_iter()
-        .chain(mod_trucks.iter().cloned())
-        .collect::<std::collections::BTreeSet<_>>()
-        .into_iter()
-        .collect();
-    let present = tablet::trucks_in_mod(&ours);
-    let screens_current = game_mod::mod_screens_current(&screen_mods, &ours);
-    let marks = cab_mark::for_tablet(&files, &mods, &mod_trucks);
-    let marks_current = cab_mark::current(&marks, &ours);
-    if wanted != present || !screens_current || !marks_current {
-        let made = game_mod::build(&files, &mod_trucks, &screen_mods, &marks).map_err(|error| error.to_string());
-        let made = made.and_then(|(bytes, built)| {
-            let dir = ours.parent().ok_or("no folder")?;
-            game_mod::install(&bytes, dir).map_err(|error| error.to_string())?;
-            Ok(built)
+    let marks = cab_mark::for_tv(&files, &mods);
+    if !cab_mark::current(&marks, &ours) || !game_mod::cab_tv_current(&files, &ours) {
+        let (bytes, built) = game_mod::build(&files, &marks);
+        let made = ours.parent().ok_or("no folder".to_owned()).and_then(|dir| {
+            game_mod::install(&bytes, dir).map_err(|error| error.to_string())
         });
-        let built = match made {
-            Ok(built) => built,
+        if let Err(error) = made {
             // Tried again at the next look.
-            Err(error) => return log!("setup: WestPlay's mod not made again for the installed mods: {error}"),
-        };
-        let screens: Vec<&str> =
-            built.patched.iter().copied().filter(|layout| game_mod::mod_screen_layout(layout)).collect();
-        log!(
-            "setup: WestPlay's mod made again: the tablet at {} places (was {}), {} of them the mods' trucks'; the mod \
-             vehicles' screens: {screens:?}; the cab's mark in {} dashboards",
-            wanted.len(),
-            present.len(),
-            wanted.iter().filter(|spot| mod_trucks.contains(spot)).count(),
-            built.cab_marks
-        );
+            return log!("setup: the mod not made again for the installed mods: {error}");
+        }
+        log!("setup: the mod made again: the cab's mark in {} dashboards", built.cab_marks);
         for (script, why) in &marks.left {
             log!("setup: the cab's mark not in {script}: {why}");
         }
@@ -445,13 +288,13 @@ pub struct InstallReport {
     plugin: PluginOutcome,
     /// Why the mod couldn't be built or written, if it couldn't.
     mod_error: Option<String>,
-    /// Everything's in: WestPlay is set up in this game (its map is built next).
+    /// Everything's in: TruckersTV is set up in this game.
     done: bool,
 }
 
-/// Installs WestPlay into the game in `dir`: its mod, built from this game, into WestPlay's own folder (the
+/// Installs TruckersTV into the game in `dir`: its mod, built from this game, into TruckersTV's own folder (the
 /// plugin mounts it into the game: `game_mod`), and its plugin into the game's plugins folder (with
-/// `administrator`, through Windows' prompt, for that one copy). Once both are in, WestPlay is set up in this
+/// `administrator`, through Windows' prompt, for that one copy). Once both are in, TruckersTV is set up in this
 /// game.
 #[tauri::command]
 pub async fn install_into_game(
@@ -479,25 +322,24 @@ pub async fn install_into_game(
     .await
 }
 
-/// The mod into WestPlay's own folder; then, from a game WestPlay 1.2 set up, its copy taken out of the game's
+/// The mod into TruckersTV's own folder; then, from a game TruckersTV 1.2 set up, its copy taken out of the game's
 /// `mod` folder and out of each profile's active mods (the game closed: the companion installs only then).
 /// Two copies would stop the game when a screen starts, and the plugin doesn't mount its own while the old one
 /// is there.
 fn install_mod(game: &Game) -> Result<(), String> {
-    let (bytes, built, apart) = build_mod(game)?;
-    if let Some(why) = &built.not_sharp {
-        log!("setup: the 7\" Scania screen stays at the game's size: {why}");
+    let (bytes, built) = build_mod(game)?;
+    if let Some(why) = &built.no_tv {
+        log!("setup: no TV in the mod: {why}");
     }
     let ours = places::westplay_documents().ok_or("noDocuments")?;
     game_mod::install(&bytes, &ours).map_err(|e| format!("Couldn't write the mod: {e}"))?;
-    tablet::write_apart(&apart, &ours).map_err(|e| format!("Couldn't write the mod: {e}"))?;
     if let Some(documents) = places::game_documents() {
         westplay_setup::uninstall::remove_mod(&documents)
             .map_err(|e| format!("Couldn't take the old mod out of the game's mod folder: {e}"))?;
         let userdata = places::steam().map(|steam| steam.join("userdata"));
         let profiles = westplay_setup::uninstall::remove_from_profiles(&documents, userdata.as_deref());
         for (file, error) in &profiles.failed {
-            log!("setup: WestPlay's old mod left in {}: {error}", file.display());
+            log!("setup: TruckersTV's old mod left in {}: {error}", file.display());
         }
     }
     Ok(())
@@ -521,10 +363,10 @@ fn install_plugin(game: &Game, ours: &Path, administrator: bool) -> PluginOutcom
     }
 }
 
-/// This WestPlay's version.
+/// This TruckersTV's version.
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// Whether this WestPlay is another version than the one that put its plugin and mod into the game
+/// Whether this TruckersTV is another version than the one that put its plugin and mod into the game
 /// (`installed_by`; none: one from before versions were kept). Never in a development build.
 fn is_update(installed_by: Option<&str>) -> bool {
     !cfg!(debug_assertions) && installed_by != Some(VERSION)
@@ -541,20 +383,20 @@ async fn blocking<T: Send + 'static>(work: impl FnOnce() -> Result<T, String> + 
     tauri::async_runtime::spawn_blocking(work).await.map_err(|e| e.to_string())?
 }
 
-/// What taking WestPlay out of the game did. Mirrored by the companion's `UninstallReport`.
+/// What taking TruckersTV out of the game did. Mirrored by the companion's `UninstallReport`.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UninstallReport {
     plugin: PluginOutcome,
     mod_error: Option<String>,
-    /// Profiles WestPlay was taken out of, and those it couldn't be (left as they were).
+    /// Profiles TruckersTV was taken out of, and those it couldn't be (left as they were).
     profiles_changed: usize,
     profiles_failed: usize,
-    /// WestPlay is out of the game (its plugin and mod gone): its own data can go next ([`leave_pc`]).
+    /// TruckersTV is out of the game (its plugin and mod gone): its own data can go next ([`leave_pc`]).
     done: bool,
 }
 
-/// Takes WestPlay out of the game it's set up in, the game closed: out of each profile's active mods (each
+/// Takes TruckersTV out of the game it's set up in, the game closed: out of each profile's active mods (each
 /// checked, written whole), its screens mod, then its plugin (with `administrator`, through Windows' prompt,
 /// for that one file). Its own data stays until [`leave_pc`].
 #[tauri::command]
@@ -575,7 +417,7 @@ pub async fn uninstall_from_game(administrator: bool, store: State<'_, SetupStor
             .err()
             .map(|e| e.to_string());
         let plugin = match inner.record().game.as_deref().and_then(Game::recognise) {
-            // No game set up (or it's gone): no plugin of WestPlay's anywhere to take out.
+            // No game set up (or it's gone): no plugin of TruckersTV's anywhere to take out.
             None => PluginOutcome::Installed,
             Some(game) => {
                 let removed =
@@ -601,17 +443,16 @@ pub async fn uninstall_from_game(administrator: bool, store: State<'_, SetupStor
     .await
 }
 
-/// The companion's own browser data (its window's WebView2 profile): in use until WestPlay ends.
+/// The companion's own browser data (its window's WebView2 profile): in use until TruckersTV ends.
 const COMPANION_BROWSER: &str = "EBWebView";
 /// How long a folder still in use (a browser that hasn't let go of its files yet) is tried again.
 const IN_USE_FOR: std::time::Duration = std::time::Duration::from_secs(20);
 
-/// WestPlay's data leaves the PC while the companion shows it going (the uninstall's spinner), once it's out of
+/// TruckersTV's data leaves the PC while the companion shows it going (the uninstall's spinner), once it's out of
 /// the game: the engine stops (the screen's and the players' browsers, and with them the files they hold),
-/// then the players' browsers go with every sign-in, and unless `keep`, the maps, the player's own wallpapers
-/// and icon sets, and the settings; the setup record either way (a reinstall starts with the onboarding).
+/// then the players' browsers go with every sign-in, and unless `keep`, the settings; the setup record either way (a reinstall starts with the onboarding).
 /// Each is tried again while a browser that has just closed still holds it. Left for [`leave_pc`]: what's in
-/// use until WestPlay ends (the companion's own browser data, the logs), and anything still held here.
+/// use until TruckersTV ends (the companion's own browser data, the logs), and anything still held here.
 #[tauri::command]
 pub async fn remove_data(keep: bool, app: AppHandle, store: State<'_, SetupStore>) -> Result<(), String> {
     let config = store.0.dir.clone();
@@ -619,11 +460,7 @@ pub async fn remove_data(keep: bool, app: AppHandle, store: State<'_, SetupStore
     blocking(move || {
         crate::stop_host(&app);
         let until = std::time::Instant::now() + IN_USE_FOR;
-        let kept = |path: &Path| {
-            path.file_name().is_some_and(|name| {
-                name == COMPANION_BROWSER || (keep && (name == "maps" || name == westplay_host::customize::FOLDER))
-            })
-        };
+        let kept = |path: &Path| path.file_name().is_some_and(|name| name == COMPANION_BROWSER);
         let mut left = Vec::new();
         for path in std::fs::read_dir(&data).into_iter().flatten().flatten().map(|entry| entry.path()) {
             if !kept(&path) && !remove_soon(&path, until) {
@@ -636,7 +473,7 @@ pub async fn remove_data(keep: bool, app: AppHandle, store: State<'_, SetupStore
         }
         if !left.is_empty() {
             let names: Vec<String> = left.iter().map(|path| path.display().to_string()).collect();
-            log!("[uninstall] still in use, left for when WestPlay has ended: {}", names.join(", "));
+            log!("[uninstall] still in use, left for when TruckersTV has ended: {}", names.join(", "));
         }
         Ok(())
     })
@@ -656,8 +493,8 @@ fn remove_soon(path: &Path, until: std::time::Instant) -> bool {
     }
 }
 
-/// WestPlay leaves the PC (after [`remove_data`]): a hidden step waits for WestPlay to end, removes what was in
-/// use until then (the companion's own browser data, the logs in Documents\WestPlay, the data and settings
+/// TruckersTV leaves the PC (after [`remove_data`]): a hidden step waits for TruckersTV to end, removes what was in
+/// use until then (the companion's own browser data, the logs in Documents\TruckersTV, the data and settings
 /// folders themselves unless `keep`, and anything [`remove_data`] couldn't), and, if it was installed, runs its
 /// uninstaller quietly, which takes the app itself away. Then it quits.
 #[tauri::command]
@@ -670,16 +507,13 @@ pub fn leave_pc(keep: bool, app: AppHandle, store: State<SetupStore>) -> Result<
             .flatten()
             .flatten()
             .map(|entry| entry.path())
-            .filter(|path| {
-                path.file_name().is_none_or(|name| name != "maps" && name != westplay_host::customize::FOLDER)
-            })
             .chain([config.join(westplay_setup::record::FILE_NAME)])
             .collect()
     } else {
         vec![data, config]
     };
     if let Some(documents) = places::documents() {
-        paths.push(documents.join("WestPlay"));
+        paths.push(documents.join("TruckersTV"));
     }
     let uninstaller = std::env::current_exe().ok().and_then(|exe| Some(exe.parent()?.join("uninstall.exe")));
     after_exit(&paths, uninstaller.filter(|path| path.is_file()).as_deref())?;
@@ -687,7 +521,7 @@ pub fn leave_pc(keep: bool, app: AppHandle, store: State<SetupStore>) -> Result<
     Ok(())
 }
 
-/// Starts a step with no window at all (PowerShell, hidden): it waits for this WestPlay to end (its process
+/// Starts a step with no window at all (PowerShell, hidden): it waits for this TruckersTV to end (its process
 /// gone, not a guess at the time), removes `paths` (folders or files), each tried again while a browser that
 /// has just closed still holds it, and starts `uninstaller` quietly, if there is one.
 fn after_exit(paths: &[PathBuf], uninstaller: Option<&Path>) -> Result<(), String> {
@@ -703,7 +537,7 @@ fn after_exit(paths: &[PathBuf], uninstaller: Option<&Path>) -> Result<(), Strin
         .creation_flags(CREATE_NO_WINDOW)
         .spawn()
         .map(|_| ())
-        .map_err(|e| format!("Couldn't remove WestPlay's data: {e}"))
+        .map_err(|e| format!("Couldn't remove TruckersTV's data: {e}"))
 }
 
 /// The step's script: wait for process `pid` to end (a minute at most), then remove each of `paths`, trying
@@ -759,10 +593,10 @@ mod tests {
 
     #[test]
     fn the_step_waits_for_westplay_then_removes_each_path_quoted() {
-        let script = after_exit_script(4242, &[PathBuf::from(r"C:\Users\O'Brien\WestPlay")]);
+        let script = after_exit_script(4242, &[PathBuf::from(r"C:\Users\O'Brien\TruckersTV")]);
         assert!(script.contains("Get-Process -Id 4242"));
         assert!(script.contains("WaitForExit"));
-        assert!(script.contains(r"@('C:\Users\O''Brien\WestPlay')"));
+        assert!(script.contains(r"@('C:\Users\O''Brien\TruckersTV')"));
     }
 
     /// The real step, hidden: it waits for a process still running (a short ping) to end, then removes a folder.

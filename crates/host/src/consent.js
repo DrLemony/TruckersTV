@@ -1,4 +1,4 @@
-// WestPlay, on YouTube's cookie page ("Before you continue to YouTube", consent.youtube.com: in the EU, the UK and
+// TruckersTV, on YouTube's cookie page ("Before you continue to YouTube", consent.youtube.com: in the EU, the UK and
 // Switzerland), in YouTube's and YouTube Music's hidden players, where nobody is there to answer it: answered as its
 // Reject all answers it. The cookie set before they load (youtube.rs `answer_consent`) usually keeps it away;
 // YouTube Music still showed it now and then, the cookie there (2026-10-27). Its Reject all is the form that saves

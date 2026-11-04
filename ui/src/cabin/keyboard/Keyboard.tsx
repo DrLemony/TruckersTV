@@ -11,7 +11,7 @@ const REPEAT_AFTER_MS = 450
 const REPEAT_EVERY_MS = 90
 
 /**
- * The on-screen keyboard, iOS 26 style: a glass panel rising from the bottom of the CarPlay area while a
+ * The on-screen keyboard, iOS 26 style: a glass panel rising from the bottom of the screen while a
  * field is selected (store.ts), its keys rounded and translucent. A letter shows in a bubble above its key
  * while pressed and is typed when let go, so a slip can slide on to the right key first; shift and delete
  * act at once, delete repeating while held. Driven by the pointer (the interaction key's mouse).

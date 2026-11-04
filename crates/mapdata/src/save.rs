@@ -1,5 +1,5 @@
 //! The player's save games (`profiles/<profile>/save/<slot>/game.sii`, in the game's documents folder or
-//! Steam Cloud's): which garages the player owns, and their headquarters. A save is SII units, as the
+//! Steam Cloud's). A save is SII units, as the
 //! game's definitions are, written one of three ways:
 //!
 //! - encrypted (`ScsC`, the game's default): a 32-byte HMAC, a 16-byte IV and the unpacked size (u32),
@@ -17,7 +17,7 @@
 //! The binary layout follows SII_Decrypt's decoder (TheLazyTomcat, <https://github.com/TheLazyTomcat/SII_Decrypt>),
 //! learned from, not copied.
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::HashMap;
 use std::fmt;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -225,31 +225,6 @@ fn values(r: &mut Reader, kind: u32, version: u32, ordinals: &HashMap<u32, Strin
         Some(element) => (0..r.u32()?).map(|_| one(r, element)).collect(),
         None => Ok(vec![one(r, kind)?]),
     }
-}
-
-/// What a save says of the player's garages: the cities whose garages they own, and their headquarters'.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct Garages {
-    pub owned: BTreeSet<String>,
-    pub headquarters: Option<String>,
-}
-
-/// The player's garages in a save's units: `garage : garage.<city>` units with a `status` other than 0
-/// (0: not bought; then its size), and the player's `hq_city`.
-pub fn garages(units: &[Unit]) -> Garages {
-    let owned = units
-        .iter()
-        .filter(|unit| unit.class == "garage")
-        .filter(|unit| unit.get("status").is_some_and(|status| status != "0"))
-        .filter_map(|unit| unit.name.strip_prefix("garage.").map(str::to_owned))
-        .collect();
-    let headquarters = units
-        .iter()
-        .find(|unit| unit.class == "player")
-        .and_then(|unit| unit.get("hq_city"))
-        .filter(|city| !city.is_empty() && *city != "null")
-        .map(str::to_owned);
-    Garages { owned, headquarters }
 }
 
 /// The mods a profile has enabled (its `profile.sii`, read with [`read`]), as the game lists them:
@@ -501,11 +476,11 @@ mod tests {
         entry.split('|').next() == Some("westplay")
     }
 
-    /// A profile without WestPlay's mod is the same profile in everything else, byte for byte where it's
+    /// A profile without TruckersTV's mod is the same profile in everything else, byte for byte where it's
     /// binary; one that doesn't list it is left alone.
     #[test]
     fn takes_a_mod_out_of_a_binary_profile_and_nothing_else() {
-        let before = binary_profile(&["promods|ProMods", "westplay|WestPlay", "rta|Real Traffic"]);
+        let before = binary_profile(&["promods|ProMods", "westplay|TruckersTV", "rta|Real Traffic"]);
         let after = without_mods(&before, westplay).unwrap().expect("changed");
         assert_eq!(after, binary_profile(&["promods|ProMods", "rta|Real Traffic"]));
         let units = read(&after).unwrap();
@@ -513,13 +488,13 @@ mod tests {
         assert_eq!(units[0].get("cached_experience"), read(&before).unwrap()[0].get("cached_experience"));
         assert_eq!(without_mods(&after, westplay).unwrap(), None);
         assert_eq!(without_mods(&binary_profile(&[]), westplay).unwrap(), None);
-        assert_eq!(without_mods(&binary_profile(&["westplay|WestPlay"]), westplay).unwrap(), Some(binary_profile(&[])));
+        assert_eq!(without_mods(&binary_profile(&["westplay|TruckersTV"]), westplay).unwrap(), Some(binary_profile(&[])));
     }
 
     #[test]
     fn takes_a_mod_out_of_a_text_profile_numbering_the_rest_again() {
         let before = "SiiNunit\r\n{\r\nuser_profile : _nameless.1 {\r\n profile_name: Western\r\n active_mods: 3\r\n \
-             active_mods[0]: \"promods|ProMods\"\r\n active_mods[1]: \"westplay|WestPlay\"\r\n \
+             active_mods[0]: \"promods|ProMods\"\r\n active_mods[1]: \"westplay|TruckersTV\"\r\n \
              active_mods[2]: \"rta|Real Traffic\"\r\n cached_experience: 12\r\n}\r\n\r\n}\r\n";
         let after = String::from_utf8(without_mods(before.as_bytes(), westplay).unwrap().unwrap()).unwrap();
         assert_eq!(
@@ -600,18 +575,6 @@ mod tests {
         );
         assert_eq!(units[0].get("size"), Some("big"));
         assert_eq!(units[2].name, "_nameless.0000.0000.0000.0001");
-    }
-
-    #[test]
-    fn finds_the_garages_the_player_owns() {
-        let garages = garages(&read(&binary_save()).unwrap());
-        assert_eq!(garages.owned.into_iter().collect::<Vec<_>>(), ["calais"]);
-        assert_eq!(garages.headquarters.as_deref(), Some("calais"));
-        // A text save reads the same way.
-        let text =
-            "SiiNunit\n{\ngarage : garage.berlin {\n status: 1\n}\nplayer : _nameless.1 {\n hq_city: berlin\n}\n}\n";
-        let garages = super::garages(&read(text.as_bytes()).unwrap());
-        assert_eq!((garages.owned.len(), garages.headquarters.as_deref()), (1, Some("berlin")));
     }
 
     #[test]

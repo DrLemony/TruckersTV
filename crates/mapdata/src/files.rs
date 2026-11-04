@@ -7,7 +7,6 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 
 use crate::archive::{Archive, ArchiveError};
-use crate::texture::Texture;
 
 /// One mounted archive.
 pub enum Mount {
@@ -143,46 +142,6 @@ impl GameFiles {
             };
             match read {
                 Ok(Some(bytes)) => return Ok(Some(bytes)),
-                Ok(None) => {}
-                Err(error) => return Err(file_error(path, mount, error)),
-            }
-        }
-        Ok(None)
-    }
-
-    /// A texture's top level as stored ([`crate::archive::Archive::read_texture_top`]), from the latest archive
-    /// that has it (not from extracted folders: there, the `.dds` beside the `.tobj` is the picture).
-    pub fn read_texture_top(&self, path: &str) -> Result<Option<crate::archive::RawTexture>, FileError> {
-        for mount in self.mounts.iter().rev() {
-            if let Mount::Archive(archive) = mount
-                && archive.contains(path)
-            {
-                return archive.read_texture_top(path).map_err(|error| file_error(path, mount, error));
-            }
-        }
-        Ok(None)
-    }
-
-    /// Reads a texture (a `.tobj` path) from the latest mount that has it: from an archive's texture entry,
-    /// or in an extracted folder from the `.dds` file beside its `.tobj`.
-    pub fn read_texture(&self, path: &str) -> Result<Option<Texture>, FileError> {
-        for mount in self.mounts.iter().rev() {
-            let read = match mount {
-                Mount::Archive(archive) if archive.contains(path) => archive.read_texture(path),
-                Mount::Archive(_) => Ok(None),
-                Mount::Folder(root) => {
-                    let dds = root.join(path.trim_start_matches('/')).with_extension("dds");
-                    match std::fs::read(&dds) {
-                        Ok(bytes) => Texture::from_dds(&bytes)
-                            .map(Some)
-                            .map_err(|what| ArchiveError::Unsupported { hash: 0, what }),
-                        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
-                        Err(error) => Err(ArchiveError::Io(error)),
-                    }
-                }
-            };
-            match read {
-                Ok(Some(texture)) => return Ok(Some(texture)),
                 Ok(None) => {}
                 Err(error) => return Err(file_error(path, mount, error)),
             }

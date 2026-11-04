@@ -1,4 +1,4 @@
-//! WestPlay's settings: one store the app keeps on disk, read and changed by the companion window (and, later,
+//! TruckersTV's settings: one store the app keeps on disk, read and changed by the companion window (and, later,
 //! the in-cabin Settings app), applied live by the host.
 //!
 //! Saved as JSON with a version number (`settings.json` in the app's config folder). Loading is forgiving, so
@@ -25,10 +25,6 @@ pub struct Settings {
     pub interaction: InteractionSettings,
     #[serde(deserialize_with = "lenient")]
     pub keybinds: Keybinds,
-    #[serde(deserialize_with = "lenient")]
-    pub screen: ScreenSettings,
-    #[serde(deserialize_with = "lenient")]
-    pub look: LookSettings,
     #[serde(deserialize_with = "lenient")]
     pub graphics: GraphicsSettings,
     #[serde(deserialize_with = "lenient")]
@@ -67,40 +63,13 @@ impl SoundSettings {
 }
 
 /// Which GPU the cab is drawn on (the companion's Truck Screen): one the player chose, by its id
-/// (`graphics::Adapter::id`), or (`None`) the one WestPlay picks. A chosen GPU that's gone (an external one
-/// unplugged) leaves WestPlay picking.
+/// (`graphics::Adapter::id`), or (`None`) the one TruckersTV picks. A chosen GPU that's gone (an external one
+/// unplugged) leaves TruckersTV picking.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct GraphicsSettings {
     #[serde(deserialize_with = "lenient")]
     pub gpu: Option<String>,
-}
-
-/// How the screen looks: its wallpaper (chosen in the cab's Settings or the companion's Customize) and its
-/// icons (the companion's Customize).
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", default)]
-pub struct LookSettings {
-    /// A wallpaper's id: one of WestPlay's (`plain`) or the player's (`custom:…`, `customize`). None:
-    /// the cabin page's own default.
-    #[serde(deserialize_with = "lenient")]
-    pub wallpaper: Option<String>,
-    /// One of the player's icon sets, by name. None: WestPlay's own icons.
-    #[serde(deserialize_with = "lenient")]
-    pub icon_set: Option<String>,
-    /// Light or dark icons, or (`auto`) as the screen is.
-    #[serde(deserialize_with = "lenient")]
-    pub icon_style: IconStyle,
-}
-
-/// Which of an icon's looks the screen shows: as the screen is (light or dark), or always one.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum IconStyle {
-    #[default]
-    Auto,
-    Light,
-    Dark,
 }
 
 /// Using the truck screen: hold the interaction key (or press it, toggled), and the mouse moves a cursor on
@@ -204,14 +173,15 @@ impl<'de> Deserialize<'de> for KeyCode {
     }
 }
 
-/// The keys for what WestPlay does from the game (owner 2026-10-21: every keybind customizable in the
-/// companion): the playing app's volume up and down a step, and play or pause it.
+/// The keys for what TruckersTV does from the game (owner 2026-10-21: every keybind customizable in the
+/// companion): the playing app's volume up and down a step, play or pause it, and the camera zoomed to the screen.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Keybinds {
     pub volume_up: Binding,
     pub volume_down: Binding,
     pub play_pause: Binding,
+    pub zoom: Binding,
 }
 
 impl<'de> Deserialize<'de> for Keybinds {
@@ -227,16 +197,22 @@ impl<'de> Deserialize<'de> for Keybinds {
             volume_up: binding("volumeUp", defaults.volume_up),
             volume_down: binding("volumeDown", defaults.volume_down),
             play_pause: binding("playPause", defaults.play_pause),
+            zoom: binding("zoom", defaults.zoom),
         })
     }
 }
 
 impl Default for Keybinds {
     /// The interaction key with 1, 2 and 3 (as promised to the players who asked: Alt+1, Alt+2, Alt+3), in a
-    /// row as on a stereo (owner 2026-10-21): volume down, play/pause between, volume up.
+    /// row as on a stereo (owner 2026-10-21): volume down, play/pause between, volume up; the zoom next, with 4.
     fn default() -> Self {
         let with_key = |code| Binding { key: KeyCode(code), with_interaction_key: true };
-        Self { volume_down: with_key(0x31), play_pause: with_key(0x32), volume_up: with_key(0x33) }
+        Self {
+            volume_down: with_key(0x31),
+            play_pause: with_key(0x32),
+            volume_up: with_key(0x33),
+            zoom: with_key(0x34),
+        }
     }
 }
 
@@ -248,38 +224,20 @@ impl Keybinds {
                 Keybind::VolumeUp => self.volume_up,
                 Keybind::VolumeDown => self.volume_down,
                 Keybind::PlayPause => self.play_pause,
+                Keybind::Zoom => self.zoom,
             };
             keybind_value(binding.key.virtual_key(), binding.with_interaction_key)
         })
     }
 }
 
-/// A key for one of WestPlay's actions, pressed alone or while holding the interaction key (while using the
+/// A key for one of TruckersTV's actions, pressed alone or while holding the interaction key (while using the
 /// screen, toggled).
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Binding {
     pub key: KeyCode,
     pub with_interaction_key: bool,
-}
-
-/// How WestPlay sits on the truck's screen.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", default)]
-pub struct ScreenSettings {
-    #[serde(deserialize_with = "lenient")]
-    pub truck_strip: TruckStrip,
-}
-
-/// The truck's own strip beside WestPlay (the Scania Smart Dash's, the DAF's status bar): kept where the
-/// truck has one, or WestPlay takes the whole screen. The cabin page applies it (`oemMode` there), and its
-/// Settings can change it (Appearance › Vehicle Bar), as the companion's Controls can.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum TruckStrip {
-    #[default]
-    Auto,
-    Off,
 }
 
 /// How fast the cursor moves: a multiplier on its whole speed curve. Always within [`Self::MIN`] and
@@ -321,7 +279,7 @@ impl Default for Sensitivity {
 }
 
 /// Deserializes a field, falling back to its default when the stored value doesn't fit (a typo, or a value
-/// a newer version of WestPlay wrote), instead of failing the whole file.
+/// a newer version of TruckersTV wrote), instead of failing the whole file.
 fn lenient<'de, D: Deserializer<'de>, T: DeserializeOwned + Default>(deserializer: D) -> Result<T, D::Error> {
     let value = serde_json::Value::deserialize(deserializer)?;
     Ok(T::deserialize(value).unwrap_or_default())
@@ -450,12 +408,6 @@ mod tests {
                 volume_up: Binding { key: KeyCode::new(0x6b).unwrap(), with_interaction_key: false },
                 ..Keybinds::default()
             },
-            screen: ScreenSettings { truck_strip: TruckStrip::Off },
-            look: LookSettings {
-                wallpaper: Some("custom:Dusk".into()),
-                icon_set: Some("Retro".into()),
-                icon_style: IconStyle::Dark,
-            },
             graphics: GraphicsSettings { gpu: Some("10de:2702:00000000:161".into()) },
             sound: SoundSettings {
                 equalizer: crate::speakers::Equalizer { bass: -3, mid: 1, treble: 2 },
@@ -467,7 +419,6 @@ mod tests {
         assert!(json.contains("\"version\": 2"), "{json}");
         assert!(json.contains("\"key\": 5"), "{json}");
         assert!(json.contains("\"mode\": \"toggle\""), "{json}");
-        assert!(json.contains("\"truckStrip\": \"off\""), "{json}");
         assert_eq!(parse(&json).unwrap(), settings);
     }
 
@@ -485,9 +436,7 @@ mod tests {
             [partial.keybinds.volume_down, partial.keybinds.play_pause, partial.keybinds.volume_up],
             [with_key(0x31), with_key(0x32), with_key(0x33)]
         );
-        // Files from before the truck strip was a setting keep it on Auto.
-        assert_eq!(partial.screen.truck_strip, TruckStrip::Auto);
-        // And from before the GPU was: WestPlay picks it.
+        // And from before the GPU was: TruckersTV picks it.
         assert_eq!(partial.graphics.gpu, None);
     }
 
@@ -499,9 +448,6 @@ mod tests {
         let settings = parse(r#"{"interaction": {"key": "rightCtrl", "sensitivity": "fast"}}"#).unwrap();
         assert_eq!(settings.interaction.key.virtual_key(), 0xa3);
         assert_eq!(settings.interaction.sensitivity, Sensitivity::default());
-        let settings = parse(r#"{"screen": {"truckStrip": "sideways"}, "interaction": {"key": "rightCtrl"}}"#).unwrap();
-        assert_eq!(settings.screen.truck_strip, TruckStrip::Auto);
-        assert_eq!(settings.interaction.key.virtual_key(), 0xa3);
         // A key no keyboard has, and a binding missing its key: their defaults.
         let settings =
             parse(r#"{"version": 2, "interaction": {"key": 999}, "keybinds": {"volumeUp": {"key": 300}}}"#).unwrap();

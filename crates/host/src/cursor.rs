@@ -50,7 +50,7 @@ const FADE: Duration = Duration::from_millis(600);
 const SHRINK: Duration = Duration::from_millis(120);
 const COLOUR: Duration = Duration::from_millis(260);
 
-/// Apple's own curve, as every WestPlay transition moves on (`shell.css`, `--motion-ease`: a critically damped
+/// Apple's own curve, as every TruckersTV transition moves on (`shell.css`, `--motion-ease`: a critically damped
 /// spring, `1 - (1 + wt)e^-wt`, settled at its end), the same samples, followed straight between them as CSS's
 /// `linear()` does.
 const EASE: [f32; 25] = [
@@ -154,9 +154,8 @@ impl Cursor {
     }
 
     /// Follows the mouse, each turn: shown at once as it comes into the page, faded away after a while untouched
-    /// and back as it's used. Let go of (the interaction key released) is left untouched too (owner 2026-10-27:
-    /// it went at once): it stays where it was, a press let go, and fades as untouched; taken up again before it's
-    /// gone, it goes on from where it is.
+    /// and back as it's used. Let go of (the interaction key released) it fades at once, a press let go; taken up
+    /// again before it's gone, it goes on from where it is.
     pub fn follow(&mut self, mouse: Mouse, now: Instant) {
         if !mouse.active {
             if self.active {
@@ -164,9 +163,6 @@ impl Cursor {
                 self.pressed = false;
                 self.scale.aim(1.0, SHRINK, now);
                 self.press.aim(0.0, COLOUR, now);
-            }
-            // Only ever going: never shown while let go.
-            if now.saturating_duration_since(self.last_used) >= IDLE_AFTER {
                 self.opacity.aim(0.0, FADE, now);
             }
             return;
@@ -425,27 +421,22 @@ mod tests {
     }
 
     #[test]
-    fn shows_at_once_and_stays_a_while_let_go() {
+    fn shows_at_once_and_fades_as_its_let_go() {
         let start = Instant::now();
         let later = |ms| start + Duration::from_millis(ms);
         let mut cursor = Cursor::new(start);
-        // Never let go of before (WestPlay starting): nothing, whatever the time.
+        // Never let go of before (TruckersTV starting): nothing, whatever the time.
         cursor.follow(Mouse::default(), start);
         assert_eq!(cursor.look(start), None);
         cursor.follow(mouse(100.0, 50.0, true, true), later(10));
         let look = cursor.look(later(10)).unwrap();
         assert_eq!((look.x, look.y, look.opacity), (100.0, 50.0, 1.0));
-        // Let go of (pressed then): where it was, its press let go, until five seconds from its last use...
-        for ms in [20, 2_000, 5_009] {
-            cursor.follow(Mouse::default(), later(ms));
-        }
-        let still = cursor.look(later(5_009)).unwrap();
-        assert_eq!((still.x, still.y, still.opacity, still.scale), (100.0, 50.0, 1.0, 1.0));
-        // ...then fading as untouched, and gone.
+        // Let go of (pressed then): fading where it was, and gone.
         cursor.follow(Mouse::default(), later(5_010));
         cursor.follow(Mouse::default(), later(5_310));
-        let fading = cursor.look(later(5_310)).unwrap().opacity;
-        assert!(fading > 0.0 && fading < 0.1, "{fading}");
+        let fading = cursor.look(later(5_310)).unwrap();
+        assert!(fading.opacity > 0.0 && fading.opacity < 0.1, "{}", fading.opacity);
+        assert_eq!((fading.x, fading.y), (100.0, 50.0));
         cursor.follow(Mouse::default(), later(5_700));
         assert_eq!(cursor.look(later(5_700)), None);
         // Taken up again: shown at once where the mouse is.
@@ -455,7 +446,9 @@ mod tests {
         cursor.follow(Mouse::default(), later(6_100));
         cursor.follow(mouse(31.0, 40.0, false, true), later(6_200));
         let back = cursor.look(later(6_200)).unwrap();
-        assert_eq!((back.x, back.opacity), (31.0, 1.0));
+        assert!(back.x == 31.0 && back.opacity > 0.0 && back.opacity < 1.0, "{back:?}");
+        cursor.follow(mouse(31.0, 40.0, false, true), later(6_900));
+        assert_eq!(cursor.look(later(6_900)).unwrap().opacity, 1.0);
     }
 
     #[test]

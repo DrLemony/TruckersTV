@@ -1,4 +1,4 @@
-//! Windows' own pickers: a folder (the player showing WestPlay where the game is when it isn't found, an icon
+//! Windows' own pickers: a folder (the player showing TruckersTV where the game is when it isn't found, an icon
 //! set's folder), and files (wallpapers, an icon set's .zip).
 
 use std::path::PathBuf;

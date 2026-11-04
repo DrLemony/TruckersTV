@@ -1,10 +1,10 @@
-//! WestPlay's game plugin (`westplay.dll`), in the game's `bin/win_x64/plugins` folder, where the game loads
+//! TruckersTV's game plugin (`truckerstv.dll`), in the game's `bin/win_x64/plugins` folder, where the game loads
 //! SDK plugins from (and TruckersMP's client too).
 //!
 //! Installing writes the new plugin beside the one there, then moves it over it, so the game never finds
 //! half a file. Two things can stand in the way, and each is told apart: the game running (it holds the
 //! plugin it loaded: close it first), and a folder that needs administrator rights (Steam installed under
-//! Program Files). For the latter WestPlay starts itself again with them, for that one copy only
+//! Program Files). For the latter TruckersTV starts itself again with them, for that one copy only
 //! ([`install_as_administrator`]): Windows asks the player once, and nothing else runs with those rights.
 
 use std::io;
@@ -19,8 +19,8 @@ use windows::core::{HSTRING, PCWSTR, w};
 use crate::game::Game;
 
 /// The plugin's file, in the game's plugins folder.
-pub const FILE_NAME: &str = "westplay.dll";
-/// The argument WestPlay is started with, as administrator, to copy the plugin and nothing else.
+pub const FILE_NAME: &str = "truckerstv.dll";
+/// The argument TruckersTV is started with, as administrator, to copy the plugin and nothing else.
 const COPY_ARGUMENT: &str = "--westplay-install-plugin";
 /// The same, to remove it and nothing else (uninstalling).
 const REMOVE_ARGUMENT: &str = "--westplay-remove-plugin";
@@ -33,13 +33,13 @@ const EXIT_COPIED: u32 = 0;
 const EXIT_IN_USE: u32 = 2;
 const EXIT_FAILED: u32 = 1;
 
-/// The plugin in a game, against WestPlay's own.
+/// The plugin in a game, against TruckersTV's own.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum State {
     Missing,
-    /// The same as WestPlay's.
+    /// The same as TruckersTV's.
     Current,
-    /// Another version (an older WestPlay's, or a newer one's).
+    /// Another version (an older TruckersTV's, or a newer one's).
     Different,
 }
 
@@ -78,7 +78,7 @@ impl From<io::Error> for InstallError {
     }
 }
 
-/// The plugin installed in `game`, against WestPlay's own (`ours`, the file WestPlay ships).
+/// The plugin installed in `game`, against TruckersTV's own (`ours`, the file TruckersTV ships).
 pub fn state(game: &Game, ours: &Path) -> io::Result<State> {
     let installed = match std::fs::read(game.plugins_dir().join(FILE_NAME)) {
         Ok(bytes) => bytes,
@@ -88,38 +88,12 @@ pub fn state(game: &Game, ours: &Path) -> io::Result<State> {
     Ok(if installed == std::fs::read(ours)? { State::Current } else { State::Different })
 }
 
-/// Other CarPlay apps WestPlay can't share the trucks' screens with, by their plugin's file in the game's
-/// plugins folder (lower case), and the name the companion says.
-const OTHER_APPS: &[(&str, &str)] = &[
-    // YMN One: its plugin takes the trucks' GPS screens for its own texture, pink while its app isn't running,
-    // WestPlay's screen never seen (a player's game.log, 2026-10-27: "[mem server] Failed to init update for
-    // object '/home/YamanDrive/gps.tobj'").
-    ("yamandrivebridge.dll", "ymnOne"),
-];
-
-/// The other CarPlay apps installed in `game` ([`OTHER_APPS`]), each once.
-pub fn other_apps(game: &Game) -> Vec<&'static str> {
-    other_apps_in(&game.plugins_dir())
-}
-
-fn other_apps_in(plugins: &Path) -> Vec<&'static str> {
-    let Ok(entries) = std::fs::read_dir(plugins) else { return Vec::new() };
-    let names: Vec<String> = entries.flatten().map(|entry| entry.file_name().to_string_lossy().to_lowercase()).collect();
-    let mut found: Vec<&'static str> = OTHER_APPS
-        .iter()
-        .filter(|(file, _)| names.iter().any(|name| name == file))
-        .map(|(_, app)| *app)
-        .collect();
-    found.dedup();
-    found
-}
-
-/// Installs WestPlay's plugin (`ours`) in `game`: written beside the one there, then moved over it.
+/// Installs TruckersTV's plugin (`ours`) in `game`: written beside the one there, then moved over it.
 pub fn install(game: &Game, ours: &Path) -> Result<PathBuf, InstallError> {
     copy_into(ours, &game.plugins_dir())
 }
 
-/// Takes the plugin out of `game` (only WestPlay's own file, and a copy left half-written).
+/// Takes the plugin out of `game` (only TruckersTV's own file, and a copy left half-written).
 pub fn uninstall(game: &Game) -> Result<(), InstallError> {
     remove_from(&game.plugins_dir())
 }
@@ -159,7 +133,7 @@ fn copy_into(ours: &Path, plugins: &Path) -> Result<PathBuf, InstallError> {
     Ok(target)
 }
 
-/// Installs the plugin with administrator rights: WestPlay starts itself again with them (Windows asks the
+/// Installs the plugin with administrator rights: TruckersTV starts itself again with them (Windows asks the
 /// player), copies the plugin, and ends; this waits for it.
 pub fn install_as_administrator(game: &Game, ours: &Path) -> Result<(), InstallError> {
     as_administrator(format!("{COPY_ARGUMENT} {} {}", quoted(ours), quoted(&game.plugins_dir())))
@@ -170,7 +144,7 @@ pub fn uninstall_as_administrator(game: &Game) -> Result<(), InstallError> {
     as_administrator(format!("{REMOVE_ARGUMENT} {}", quoted(&game.plugins_dir())))
 }
 
-/// WestPlay started again with administrator rights and `arguments` (Windows asks the player), waited for.
+/// TruckersTV started again with administrator rights and `arguments` (Windows asks the player), waited for.
 fn as_administrator(arguments: String) -> Result<(), InstallError> {
     let exe = std::env::current_exe()?;
     let (exe, arguments) = (HSTRING::from(exe.as_os_str()), HSTRING::from(arguments));
@@ -206,8 +180,8 @@ fn as_administrator(arguments: String) -> Result<(), InstallError> {
     }
 }
 
-/// For WestPlay's `main`, first thing: when it was started to copy (or remove) the plugin as administrator,
-/// does that and returns the exit code (WestPlay then ends); otherwise `None`, and it starts as usual.
+/// For TruckersTV's `main`, first thing: when it was started to copy (or remove) the plugin as administrator,
+/// does that and returns the exit code (TruckersTV then ends); otherwise `None`, and it starts as usual.
 pub fn run_as_administrator_copy(args: &[String]) -> Option<i32> {
     let done = match args {
         [_, argument, ours, plugins] if argument == COPY_ARGUMENT => {
@@ -234,23 +208,7 @@ mod tests {
     use super::*;
     use crate::game::FoundBy;
 
-    #[test]
-    fn finds_other_carplay_apps_by_their_plugin() {
-        let (game, _, root) = setup("others");
-        let plugins = game.plugins_dir();
-        std::fs::create_dir_all(&plugins).unwrap();
-        std::fs::write(plugins.join(FILE_NAME), b"ours").unwrap();
-        assert!(other_apps(&game).is_empty());
-        // As its installer names it, whatever the case.
-        std::fs::write(plugins.join("YamanDriveBridge.dll"), b"theirs").unwrap();
-        assert_eq!(other_apps(&game), ["ymnOne"]);
-        // No plugins folder at all: none.
-        std::fs::remove_dir_all(&plugins).unwrap();
-        assert!(other_apps(&game).is_empty());
-        let _ = std::fs::remove_dir_all(root);
-    }
-
-    /// A game folder (temporary) and WestPlay's plugin beside it.
+    /// A game folder (temporary) and TruckersTV's plugin beside it.
     fn setup(name: &str) -> (Game, PathBuf, PathBuf) {
         let root = std::env::temp_dir().join(format!("westplay-plugin-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
@@ -306,9 +264,9 @@ mod tests {
         let (game, ours, root) = setup("admin");
         let plugins = game.plugins_dir();
         let args = |argument: &str| {
-            vec!["westplay.exe".into(), argument.into(), ours.display().to_string(), plugins.display().to_string()]
+            vec!["truckerstv.exe".into(), argument.into(), ours.display().to_string(), plugins.display().to_string()]
         };
-        assert_eq!(run_as_administrator_copy(&["westplay.exe".into()]), None);
+        assert_eq!(run_as_administrator_copy(&["truckerstv.exe".into()]), None);
         assert_eq!(run_as_administrator_copy(&args("--something-else")), None);
         assert_eq!(run_as_administrator_copy(&args(COPY_ARGUMENT)), Some(0));
         assert_eq!(state(&game, &ours).unwrap(), State::Current);

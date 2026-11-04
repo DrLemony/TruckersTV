@@ -3,7 +3,7 @@
  * every element taking part as unpainted: a click passes through the animation (`::view-transition` in
  * transitions.css) but then hits nothing, landing on the page's empty body. Like a touchscreen, though, the
  * last press must count. So such a click is given to the button that is really under it (by its layout,
- * which is already the new screen's), the sidebar's first, since it sits on top.
+ * which is already the new screen's).
  *
  * Installs the handler; returns the function that removes it.
  */
@@ -21,14 +21,12 @@ export function routeClicksDuringTransitions(): () => void {
   return () => window.removeEventListener('click', onClick, true)
 }
 
-/** The enabled button at a point of the page, by layout: the sidebar's first, otherwise the last in order. */
+/** The enabled button at a point of the page, by layout: the last in order. */
 export function buttonAt(x: number, y: number): HTMLButtonElement | null {
   const contains = (button: HTMLButtonElement) => {
     const rect = button.getBoundingClientRect()
     return !button.disabled && x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
   }
-  const sidebar = [...document.querySelectorAll<HTMLButtonElement>('.sidebar button')].find(contains)
-  if (sidebar) return sidebar
-  const all = [...document.querySelectorAll<HTMLButtonElement>('.carplay button')].filter(contains)
+  const all = [...document.querySelectorAll<HTMLButtonElement>('.stage button')].filter(contains)
   return all.at(-1) ?? null
 }

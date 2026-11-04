@@ -1,6 +1,6 @@
-//! A song's words, as Apple Music and Spotify answer them (apple_music.js, spotify.js) and the apps show them in
+//! A song's words, as Spotify answers them (spotify.js) and the apps show them in
 //! Now Playing: line by line, each with when it's sung (synced) or not, where the words are from (Spotify's
-//! provider, Apple Music's songwriters), and Spotify's own colours for them. Only these fields pass on, checked:
+//! provider), and Spotify's own colours for them. Only these fields pass on, checked:
 //! a sensible number of lines of a sensible length, times that are times, colours of one shape.
 
 /// A line: when it's sung (seconds; `end` 0: until the next), its words, and whether it starts a stanza.
@@ -33,7 +33,7 @@ pub struct Lyrics {
     /// Where the words are from ("Musixmatch").
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub provider: String,
-    /// Who wrote them (Apple Music says).
+    /// Who wrote them.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub writers: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

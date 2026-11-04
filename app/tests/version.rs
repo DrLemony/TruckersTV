@@ -1,4 +1,4 @@
-//! WestPlay has one version, the workspace's (Cargo.toml), set for a release by tools/release/version.ps1. The
+//! TruckersTV has one version, the workspace's (Cargo.toml). The
 //! places that must repeat it (Tauri's config, which writes it into the app's file details; the UI's package)
 //! say the same, and the changelog has its release.
 

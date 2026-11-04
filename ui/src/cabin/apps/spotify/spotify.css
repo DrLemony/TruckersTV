@@ -590,7 +590,7 @@
 
 /* A short screen (the 7" Scania's, its UI scaled up): two across, as on Spotify's phone app, each with room
    for its name (four across left the names a few letters wide: owner 2026-10-21). */
-@container carplay (max-height: 520px) {
+@container stage (max-height: 520px) {
   .spotify-app .sp-shortcuts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;

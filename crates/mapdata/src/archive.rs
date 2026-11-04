@@ -40,7 +40,6 @@ use std::path::{Path, PathBuf};
 use crate::cityhash::city_hash64;
 use crate::gdeflate;
 use crate::reader::{OutOfBounds, Reader};
-use crate::texture::Texture;
 
 /// Where a path's entry is: the hash of the path without its leading slash (the root is "").
 pub fn path_hash(path: &str) -> u64 {
@@ -73,30 +72,10 @@ struct Entry {
 #[derive(Clone, Copy, Debug)]
 enum Content {
     Stored(Stored),
-    /// A texture: its size, mip count, DXGI format and rows' alignment (bytes), and its pixels.
-    Texture {
-        width: u32,
-        height: u32,
-        mips: u32,
-        format: u32,
-        row_alignment: usize,
-        pixels: Stored,
-        /// Its top level, where it's kept apart from the mip tail.
-        top: Option<Stored>,
-    },
+    /// A texture (they're not read).
+    Texture,
     /// Something else (a sound sample, a texture in parts not read): its metadata kind.
     Other(u8),
-}
-
-/// A texture's top level as the archive keeps it ([`Archive::read_texture_top`]): its size, DXGI format, rows'
-/// alignment (bytes: a block-compressed texture's rows are rows of blocks) and bytes.
-#[derive(Clone, Debug)]
-pub struct RawTexture {
-    pub width: u32,
-    pub height: u32,
-    pub format: u32,
-    pub row_alignment: usize,
-    pub data: Vec<u8>,
 }
 
 /// Bytes at `offset`, `stored` of them, `size` once unpacked.
@@ -183,7 +162,6 @@ const V2_ENTRY_SIZE: usize = 0x10;
 const IMAGE: u8 = 0x01;
 const PLAIN: u8 = 0x80;
 const DIRECTORY: u8 = 0x81;
-const MIP_0: u8 = 0x82;
 const MIP_TAIL: u8 = 0x84;
 
 impl Archive {
@@ -265,36 +243,6 @@ impl Archive {
         }
     }
 
-    /// A texture's image (a `.tobj` path), or `None` if the archive has no texture at `path`.
-    pub fn read_texture(&self, path: &str) -> Result<Option<Texture>, ArchiveError> {
-        let hash = self.hash(path);
-        let Some(entry) = self.entries.get(&hash) else { return Ok(None) };
-        let unsupported = |what: String| ArchiveError::Unsupported { hash, what };
-        match entry.content {
-            Content::Texture { width, height, mips: 1, format, row_alignment, pixels, .. } => {
-                let data = self.unpack(hash, pixels)?;
-                let pitch = (width as usize * 4).next_multiple_of(row_alignment);
-                Texture::from_pixels(width, height, format, &data, Some(pitch)).map(Some).map_err(unsupported)
-            }
-            Content::Texture { mips, .. } => Err(unsupported(format!("a texture of {mips} mips"))),
-            _ => Err(unsupported("not a texture".into())),
-        }
-    }
-
-    /// A texture's top level as stored (a `.tobj` path), whatever its format: for looking at a block-compressed
-    /// texture elsewhere (examples/cab_model writes it as a `.dds`). `None` if the archive has no texture there.
-    pub fn read_texture_top(&self, path: &str) -> Result<Option<RawTexture>, ArchiveError> {
-        let hash = self.hash(path);
-        let Some(entry) = self.entries.get(&hash) else { return Ok(None) };
-        match entry.content {
-            Content::Texture { width, height, format, row_alignment, pixels, top, .. } => {
-                let data = self.unpack(hash, top.unwrap_or(pixels))?;
-                Ok(Some(RawTexture { width, height, format, row_alignment, data }))
-            }
-            _ => Err(ArchiveError::Unsupported { hash, what: "not a texture".into() }),
-        }
-    }
-
     /// A directory's children, or `None` if the archive has no directory at `path`.
     pub fn list(&self, path: &str) -> Result<Option<Listing>, ArchiveError> {
         let hash = self.hash(path);
@@ -314,7 +262,7 @@ impl Archive {
     fn contents(&self, hash: u64, entry: &Entry) -> Result<Vec<u8>, ArchiveError> {
         match entry.content {
             Content::Stored(stored) => self.unpack(hash, stored),
-            Content::Texture { .. } => Err(ArchiveError::Unsupported { hash, what: "a texture".into() }),
+            Content::Texture => Err(ArchiveError::Unsupported { hash, what: "a texture".into() }),
             Content::Other(kind) => {
                 Err(ArchiveError::Unsupported { hash, what: format!("not a plain file (kind {kind:#04x})") })
             }
@@ -528,7 +476,7 @@ fn v2_entries(table: &[u8], count: usize, metadata: &[u8]) -> Result<HashMap<u64
                 compression,
             })
         };
-        let (mut content, mut image, mut mip_tail, mut top) = (None, None, None, None);
+        let (mut content, mut image, mut mip_tail) = (None, false, false);
         for index in first..first + words {
             let header = word(index)?;
             let (kind, record) = ((header >> 24) as u8, (header & 0x00FF_FFFF) as usize);
@@ -537,23 +485,14 @@ fn v2_entries(table: &[u8], count: usize, metadata: &[u8]) -> Result<HashMap<u64
                     content = Some(Content::Stored(stored(record)?));
                     break;
                 }
-                IMAGE => image = Some((word(record)?, word(record + 1)?)),
-                MIP_0 => top = Some(stored(record)?),
-                MIP_TAIL => mip_tail = Some(stored(record)?),
+                IMAGE => image = true,
+                MIP_TAIL => mip_tail = true,
                 _ => {}
             }
             content.get_or_insert(Content::Other(kind));
         }
-        if let (Some((size, layout)), Some(pixels), None | Some(Content::Other(_))) = (image, mip_tail, content) {
-            content = Some(Content::Texture {
-                width: (size & 0xFFFF) + 1,
-                height: (size >> 16) + 1,
-                mips: (layout & 0xF) + 1,
-                format: (layout >> 4) & 0xFF,
-                row_alignment: 1 << ((layout >> 20) & 0xF),
-                pixels,
-                top,
-            });
+        if image && mip_tail && matches!(content, None | Some(Content::Other(_))) {
+            content = Some(Content::Texture);
         }
         let content = content.ok_or(ArchiveError::Corrupt("entry without metadata"))?;
         entries.insert(hash, Entry { directory: flags & 1 != 0, content });

@@ -37,16 +37,8 @@ export function on<T>(event: string, handler: (payload: T) => void): () => void 
   }
 }
 
-/** WestPlay's version: the app's own; in the preview, the workspace's (vite.config.ts). */
+/** TruckersTV's version: the app's own; in the preview, the workspace's (vite.config.ts). */
 export function appVersion(): Promise<string> {
   if (IN_APP) return import('@tauri-apps/api/app').then((app) => app.getVersion())
   return Promise.resolve(__WESTPLAY_VERSION__)
 }
-
-/** In the preview only: `?tutorial` (or `?tutorial=launch`) opens the tutorial, as the onboarding's end does. */
-export const PREVIEW_TUTORIAL: 'lesson' | 'launch' | null = IN_APP
-  ? null
-  : (() => {
-      const value = new URLSearchParams(location.search).get('tutorial')
-      return value === null ? null : value === 'launch' ? 'launch' : 'lesson'
-    })()

@@ -1,7 +1,7 @@
-//! The app's log: each line printed (the console, in development) and kept in `Documents\WestPlay\logs\app.log`
-//! beside the plugin's `plugin.log`, written anew each time WestPlay starts. Release builds have no console,
+//! The app's log: each line printed (the console, in development) and kept in `Documents\TruckersTV\logs\app.log`
+//! beside the plugin's `plugin.log`, written anew each time TruckersTV starts. Release builds have no console,
 //! so without the file what the host says (a service that failed, the game's memory not found) would be lost.
-//! Where Documents refuses it, it's kept in WestPlay's own data folder instead, saying why ([`init`]).
+//! Where Documents refuses it, it's kept in TruckersTV's own data folder instead, saying why ([`init`]).
 //! Never anything of the player's accounts or what they play: errors, and how long things took.
 
 use std::fs::{self, File};
@@ -16,17 +16,17 @@ static FILE: Mutex<Option<File>> = Mutex::new(None);
 /// Where this run's `app.log` is, once [`init`] made it.
 static PLACE: OnceLock<PathBuf> = OnceLock::new();
 
-/// Where the log is kept: `Documents\WestPlay\logs`, none if Documents can't be found.
+/// Where the log is kept: `Documents\TruckersTV\logs`, none if Documents can't be found.
 pub fn dir() -> Option<PathBuf> {
-    Some(westplay_setup::places::documents()?.join("WestPlay").join("logs"))
+    Some(westplay_setup::places::documents()?.join("TruckersTV").join("logs"))
 }
 
-/// Where the log is kept when Documents refuses it: WestPlay's own data folder (`%LOCALAPPDATA%\app.westplay`,
-/// where the screens' browsers and the maps are, so WestPlay can write there whenever it runs at all). A
+/// Where the log is kept when Documents refuses it: TruckersTV's own data folder (`%LOCALAPPDATA%\app.truckerstv`,
+/// where the screens' browsers and the maps are, so TruckersTV can write there whenever it runs at all). A
 /// player's ransomware protection (Windows Security's Controlled folder access, 2026-10-24) let the game write
-/// its `plugin.log` in Documents but not WestPlay: there was no `app.log`, and nothing said why.
+/// its `plugin.log` in Documents but not TruckersTV: there was no `app.log`, and nothing said why.
 fn fallback_dir() -> Option<PathBuf> {
-    Some(PathBuf::from(std::env::var_os("LOCALAPPDATA")?).join("app.westplay").join("logs"))
+    Some(PathBuf::from(std::env::var_os("LOCALAPPDATA")?).join("app.truckerstv").join("logs"))
 }
 
 /// Where this run's `app.log` is (the companion's About shows it); `None` if it couldn't be made anywhere.
@@ -35,7 +35,7 @@ pub fn place() -> Option<&'static Path> {
 }
 
 /// Starts the log file, empty (lines before it are only printed), in Documents; if that's refused, in
-/// WestPlay's own folder, its first line saying what Documents answered. Where neither can be written, lines
+/// TruckersTV's own folder, its first line saying what Documents answered. Where neither can be written, lines
 /// are only printed. A panic in any thread is kept in it too (`log_panics`).
 pub fn init() {
     log_panics();

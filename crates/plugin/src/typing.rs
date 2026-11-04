@@ -1,4 +1,4 @@
-//! Typing on the player's own keyboard into the WestPlay text field selected (the bridge's
+//! Typing on the player's own keyboard into the TruckersTV text field selected (the bridge's
 //! [`westplay_shared::TypingBlock`]).
 //!
 //! While the truck stands still, a field selected then takes the keyboard: every key press becomes what
@@ -26,7 +26,7 @@ const MOVING_KMH: f32 = 1.0;
 static TYPING: AtomicBool = AtomicBool::new(false);
 static GATE: Mutex<Gate> = Mutex::new(Gate { seen: 0, armed: 0 });
 
-/// Whether the player's keys type into WestPlay's field (and so none reach the game but its own).
+/// Whether the player's keys type into TruckersTV's field (and so none reach the game but its own).
 pub fn typing() -> bool {
     TYPING.load(Ordering::Acquire)
 }

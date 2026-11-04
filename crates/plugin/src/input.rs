@@ -3,9 +3,9 @@
 //! The game reads the mouse through DirectInput 8. While the player holds the interaction key, these hooks
 //! take it away from the game: it sees no mouse movement or buttons, so the head view stays on the screen
 //! (but a button it saw go down still comes up for it: none stays held). The mouse goes to the app through
-//! the bridge's pointer block instead, which drives the WestPlay screen with it. (The keyboard is the
+//! the bridge's pointer block instead, which drives the TruckersTV screen with it. (The keyboard is the
 //! `keyboard` module's: the game reads it from window messages. Should a game read a keyboard through
-//! DirectInput too, it's kept from the same keys there while the player types into WestPlay, and only then.)
+//! DirectInput too, it's kept from the same keys there while the player types into TruckersTV, and only then.)
 //!
 //! Both ways DirectInput reports input are covered: immediate (`GetDeviceState`) and buffered
 //! (`GetDeviceData`). A mouse read both ways reports each movement to both, so while one is read buffered its
@@ -43,7 +43,7 @@ const VTBL_GET_DEVICE_DATA: usize = 10;
 /// game may read its mouse in a bigger one: ETS2 uses a joystick-style format with the buttons past byte 64
 /// (`DIJOYSTATE2` is 272 bytes).
 const MAX_MOUSE_FORMAT_SIZE: u32 = 512;
-/// Mouse buttons WestPlay uses: left, right, middle.
+/// Mouse buttons TruckersTV uses: left, right, middle.
 const MOUSE_BUTTONS: usize = 3;
 /// `DIDFT_PSHBUTTON | DIDFT_TGLBUTTON`: the object is a button.
 const DIDFT_BUTTON: u32 = 0x0c;
@@ -88,7 +88,7 @@ enum MouseObject {
 }
 
 impl MouseLayout {
-    /// The object at this offset of the data format, if it's one WestPlay uses.
+    /// The object at this offset of the data format, if it's one TruckersTV uses.
     fn object(&self, offset: u32) -> Option<MouseObject> {
         let at = Some(offset);
         if at == self.x {
@@ -342,7 +342,7 @@ unsafe fn on_device_state(device: *mut c_void, size: u32, state: *mut u8) {
     // (each axis and button checked against `size`).
     unsafe {
         let kind = device_kind(device);
-        // While the player types into WestPlay, the keyboard's keys are its (but the game's own).
+        // While the player types into TruckersTV, the keyboard's keys are its (but the game's own).
         if kind == DeviceKind::Keyboard && size == KEYBOARD_STATE_SIZE && typing::typing() {
             for scancode in (0..KEYBOARD_STATE_SIZE).filter(|&code| !typing::stays_the_games_scancode(code)) {
                 *state.add(scancode as usize) = 0;
@@ -379,7 +379,7 @@ unsafe fn on_device_state(device: *mut c_void, size: u32, state: *mut u8) {
 }
 
 /// Buffered input: events since the last read. While interacting, the mouse's go to the screen, and the
-/// game gets none of them but the releases of buttons it saw go down; while the player types into WestPlay, a
+/// game gets none of them but the releases of buttons it saw go down; while the player types into TruckersTV, a
 /// keyboard's lose every key but the game's own.
 ///
 /// # Safety
@@ -577,8 +577,8 @@ fn to_screen(object: Option<MouseObject>, value: u32) {
     }
 }
 
-/// Whether the player is using the screen: WestPlay is on it and the interaction key (the player's choice,
-/// through the bridge) is held, or toggled on. Publishes changes to the app. Without WestPlay on the screen,
+/// Whether the player is using the screen: TruckersTV is on it and the interaction key (the player's choice,
+/// through the bridge) is held, or toggled on. Publishes changes to the app. Without TruckersTV on the screen,
 /// the key takes nothing from the game.
 pub fn interaction_active() -> bool {
     // Never while the game is paused: its menu and its map are used with the mouse (owner 2026-10-21: toggled
@@ -599,7 +599,7 @@ pub fn interaction_active() -> bool {
     active
 }
 
-/// Whether the interaction key says the screen is used, whether or not WestPlay is on it: held, or (the
+/// Whether the interaction key says the screen is used, whether or not TruckersTV is on it: held, or (the
 /// player's choice) toggled on.
 fn interaction_key_held() -> bool {
     if toggle_mode() { TOGGLED.load(Ordering::Acquire) } else { interaction_key_down() }
@@ -626,13 +626,13 @@ static TOGGLED: AtomicBool = AtomicBool::new(false);
 static KEY_WAS_DOWN: AtomicBool = AtomicBool::new(false);
 
 /// Once a frame: in toggle mode, each press of the interaction key turns using the screen on or off. It's
-/// off whenever WestPlay isn't on the screen, and as the game pauses.
+/// off whenever TruckersTV isn't on the screen, and as the game pauses.
 pub fn on_frame() {
     let pressed = newly_down(&KEY_WAS_DOWN, interaction_key_down());
     let off = if !toggle_mode() {
         Some("held mode")
     } else if !bridge::screen_on() {
-        Some("WestPlay not on the screen")
+        Some("TruckersTV not on the screen")
     } else if crate::telemetry::paused() {
         // Its menu wants the mouse; back in the game, a press uses the screen again.
         Some("the game paused")

@@ -1,4 +1,4 @@
-//! WestPlay SCS SDK plugin (`westplay.dll`).
+//! TruckersTV SCS SDK plugin (`truckerstv.dll`).
 //!
 //! Loaded by ETS2/ATS from `bin/win_x64/plugins`. The game calls `scs_telemetry_init` /
 //! `scs_telemetry_shutdown` on its main thread, possibly several times per process (`sdk reload`). Under
@@ -9,17 +9,18 @@ mod camera;
 mod d3d;
 mod frame;
 mod hooks;
+mod image;
 mod input;
 mod keybinds;
 mod keyboard;
 mod log;
 mod mod_mount;
-mod navigation;
 mod screens;
 mod scs;
 mod telemetry;
 mod truckersmp;
 mod typing;
+mod zoom;
 
 use std::ffi::{CStr, CString};
 
@@ -71,7 +72,7 @@ unsafe fn init(version: u32, params: *const TelemetryInitParamsV100) -> i32 {
 
         telemetry::register(params);
         camera::locate();
-        // WestPlay's screen mod, before the game mounts the profile's mods.
+        // TruckersTV's screen mod, before the game mounts the profile's mods.
         mod_mount::mount(&game_id);
 
         // Screen interaction is optional: without it the screens still work, they just can't be used.

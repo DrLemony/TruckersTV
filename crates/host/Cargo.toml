@@ -1,6 +1,6 @@
 [package]
 name = "westplay-host"
-description = "Renders the WestPlay UI in an offscreen WebView2 and feeds the frames to the game plugin"
+description = "Renders the TruckersTV UI in an offscreen WebView2 and feeds the frames to the game plugin"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

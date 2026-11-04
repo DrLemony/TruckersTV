@@ -56,7 +56,7 @@
   place-items: center;
   width: 130px;
   height: 130px;
-  border-radius: 14px;
+  border-radius: 50%;
   color: white;
 }
 .tv-avatar-glyph {
@@ -146,20 +146,20 @@
 .tv-suggest {
   align-self: flex-start;
   background: none;
-  color: #0a84ff !important;
+  color: #8ab4f8 !important;
   padding: 4px 0;
   margin-left: 202px;
 }
 
 /* A profile's channels, and the player. */
-.tv-bar,
+.tv-head,
 .tv-controls {
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
 }
-.tv-bar h1 {
+.tv-head h1 {
   flex: 1;
   margin: 0;
   font-size: 36px;
@@ -167,7 +167,7 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-.tv-bar .text-field {
+.tv-head .text-field {
   width: 260px;
   flex-shrink: 1;
   min-width: 0;
@@ -179,17 +179,20 @@
   min-height: 42px;
   background: color-mix(in srgb, var(--text) 12%, transparent);
 }
-.tv-app .tv-primary {
-  background: #e50914;
-  color: white !important;
-}
+.tv-app .tv-primary,
 .tv-app .tv-chip.chosen {
-  background: #e50914;
-  color: white !important;
+  background: #e8eaed;
+  color: #141b2e !important;
+}
+.tv-app .tv-pill:hover,
+.tv-app .tv-chip:hover,
+.tv-app .tv-kind:hover {
+  background: #e8eaed;
+  color: #141b2e;
 }
 .tv-back {
   background: none;
-  color: #0a84ff !important;
+  color: #8ab4f8 !important;
   white-space: nowrap;
 }
 .tv-groups {
@@ -212,22 +215,26 @@
 .tv-list li {
   display: flex;
   align-items: center;
-  border-bottom: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
 }
-.tv-row {
+.tv-app .tv-item:hover {
+  background: #e8eaed;
+  color: #141b2e;
+}
+.tv-item {
   flex: 1;
   min-width: 0;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 4px;
+  padding: 12px 16px;
+  border-radius: 14px;
   background: none;
   text-align: left;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-.tv-row img,
+.tv-item img,
 .tv-logo {
   width: 60px;
   height: 40px;
@@ -240,6 +247,33 @@
   background: black;
   border-radius: 12px;
 }
+/* On the whole TV: over everything in the cabin page, the bar and the app's margins. */
+.tv-screen.full {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  border-radius: 0;
+}
+/* Its X (the player draws the one that shows: tv-player.html), up out of the screen until a press on the picture. */
+.tv-app .tv-exit {
+  position: fixed;
+  top: 3vh;
+  left: 47vw;
+  z-index: 11;
+  width: 6vw;
+  height: 6vw;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 4vw;
+  line-height: 1;
+  color: #fff;
+  background: rgb(20 27 46 / 0.85);
+  translate: 0 -30vh;
+  transition: translate 350ms ease;
+}
+.tv-app .tv-exit.shown {
+  translate: 0 0;
+}
 .tv-note {
   opacity: 0.7;
   text-align: center;
@@ -247,6 +281,11 @@
 .tv-status {
   flex: 1;
   opacity: 0.7;
+}
+.tv-note small,
+.tv-status small {
+  display: block;
+  font-size: 19px;
 }
 .tv-volume {
   min-width: 56px;

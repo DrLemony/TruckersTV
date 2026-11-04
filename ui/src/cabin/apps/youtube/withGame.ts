@@ -4,8 +4,8 @@ export type WithGame = 'pause' | 'play' | null
 /**
  * The video pauses while the player is away from the game (it's paused: its menu, its help; or its window
  * doesn't show: minimised) and plays on as they come back, but only if it was playing when they left:
- * one the player paused stays paused. `paused`: WestPlay paused it for this. `powered`: the truck's
- * electrics are on (off, nothing plays on: the screen is dark, as CarPlay is gone).
+ * one the player paused stays paused. `paused`: TruckersTV paused it for this. `powered`: the truck's
+ * electrics are on (off, nothing plays on: the screen is dark, as the TV is off).
  */
 export function withGame(
   away: boolean,

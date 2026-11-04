@@ -1,6 +1,6 @@
 [package]
 name = "westplay-setup"
-description = "Sets WestPlay up on the player's PC: finds the game, its profiles and their mods"
+description = "Sets TruckersTV up on the player's PC: finds the game, its profiles and their mods"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

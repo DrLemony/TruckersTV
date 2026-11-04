@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { type HostMessage, isInHost, postToHost, subscribeHostMessages, type TvCommand } from '../../../shared/host'
 import { type MusicPlayer, pauseMusicWithGame } from '../musicWithGame'
 import type { Channel } from './m3u'
+import type { Profile } from './profiles'
 
 /**
  * TV's player: the host's (westplay_host::tv_view), a WebView of its own placed over TV's screen, which plays
@@ -15,6 +16,10 @@ export interface TvState {
   failed: boolean
   /** 0 to 1, as the player set it. */
   volume: number
+  /** The picture on the whole TV. */
+  full: boolean
+  /** The source to open at, chosen on Home's Library. */
+  source: Profile | null
 }
 
 export const useTv = create<TvState>(() => ({
@@ -23,9 +28,14 @@ export const useTv = create<TvState>(() => ({
   loading: false,
   failed: false,
   volume: 1,
+  full: false,
+  source: null,
 }))
 
 export const sendTv = (command: TvCommand) => postToHost({ type: 'tv', command })
+
+/** How long a fetch is waited for, ms, before it's taken as failed. */
+const FETCH_WAIT_MS = 45_000
 
 let listening = false
 let nextId = 1
@@ -52,7 +62,7 @@ function listen() {
   })
 }
 
-/** `url`'s text, fetched by the player (`null`: it couldn't). Outside WestPlay (a preview), by this page. */
+/** `url`'s text, fetched by the player (`null`: it couldn't). Outside TruckersTV (a preview), by this page. */
 export function fetchText(url: string): Promise<string | null> {
   if (!isInHost()) {
     return fetch(url)
@@ -64,6 +74,9 @@ export function fetchText(url: string): Promise<string | null> {
   return new Promise((done) => {
     fetching.set(id, done)
     sendTv({ action: 'fetch', id, url })
+    setTimeout(() => {
+      if (fetching.delete(id)) done(null)
+    }, FETCH_WAIT_MS)
   })
 }
 
@@ -79,7 +92,7 @@ export function listVideos(): Promise<{ folder: boolean; videos: Channel[] }> {
   })
 }
 
-/** The PC clipboard's text, as one line (`''`: none). Outside WestPlay (a preview), this browser's. */
+/** The PC clipboard's text, as one line (`''`: none). Outside TruckersTV (a preview), this browser's. */
 export function pasteText(): Promise<string> {
   if (!isInHost()) return navigator.clipboard.readText().catch(() => '')
   listen()

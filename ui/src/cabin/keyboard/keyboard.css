@@ -1,4 +1,4 @@
-/* The on-screen keyboard (Keyboard.tsx) and WestPlay's text field (TextField.tsx), iOS 26 style: a glass
+/* The on-screen keyboard (Keyboard.tsx) and TruckersTV's text field (TextField.tsx), iOS 26 style: a glass
    panel inside the screen's margins, rounded translucent keys with no shadow under each, lighter letter keys
    and quieter function keys, a bubble over the key being pressed. */
 
@@ -11,20 +11,11 @@
   --system-blue: #0a84ff;
 }
 
-.shell.appearance-light {
-  --keyboard-glass: rgb(236 238 242 / 0.66);
-  --key: rgb(255 255 255 / 0.85);
-  --key-fn: rgb(255 255 255 / 0.4);
-  --key-bubble: #fff;
-  --field: rgb(20 22 26 / 0.07);
-  --system-blue: #007aff;
-}
-
 .keyboard {
   --gap: 10px;
   position: absolute;
-  /* Right of the sidebar, inside the app area's margins. */
-  left: calc(var(--content-left, 170px) + 8px);
+  /* Inside the screen's margins. */
+  left: calc(var(--edge) + 8px);
   right: 40px;
   bottom: 40px;
   height: 336px;
@@ -347,7 +338,7 @@
 }
 
 /* A short screen (shell.css): the keyboard about two thirds as tall, so it leaves room for what's typed into. */
-@container carplay (max-height: 520px) {
+@container stage (max-height: 520px) {
   .keyboard {
     --gap: 6px;
     bottom: 14px;

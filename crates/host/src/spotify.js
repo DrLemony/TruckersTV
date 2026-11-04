@@ -1,5 +1,5 @@
-// WestPlay, in Spotify's web player (spotify.rs): Spotify's own page, run hidden under the cab. The Spotify app
-// the player sees is WestPlay's own; this answers its questions and plays as it asks, from the page itself, as
+// TruckersTV, in Spotify's web player (spotify.rs): Spotify's own page, run hidden under the cab. The Spotify app
+// the player sees is TruckersTV's own; this answers its questions and plays as it asks, from the page itself, as
 // the page's own code would:
 //
 // - Questions (Home, Your Library, Browse all, a search, a playlist's, album's or artist's page) are asked of
@@ -713,7 +713,7 @@
     return Boolean(button)
   }
 
-  // Playing on this page's device (WestPlay's), not another of the account's (a phone).
+  // Playing on this page's device (TruckersTV's), not another of the account's (a phone).
   const here = () => !connect.active || !connect.device || connect.active === connect.device
   // Whether Spotify's player plays in this page now: the element it plays from, playing (or loading to play on).
   // Its own state, as it changes, where Connect's comes from Spotify's servers a moment later (and one sent before
@@ -1089,7 +1089,7 @@
           shuffle: state.shuffle,
           repeat: state.repeat,
           volume: state.volume,
-          // Playing on this page's device (WestPlay's), not another of the account's (a phone): only that
+          // Playing on this page's device (TruckersTV's), not another of the account's (a phone): only that
           // pauses with the game.
           here: here(),
           next: state.next.map((uri) => songs.get(uri)).filter(Boolean),

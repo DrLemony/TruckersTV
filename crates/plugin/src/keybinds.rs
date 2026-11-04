@@ -1,8 +1,9 @@
-//! The player's keybinds (the app's settings, through the bridge): volume up, volume down, play/pause.
+//! The player's keybinds (the app's settings, through the bridge): volume up, volume down, play/pause, and the
+//! camera's zoom (the plugin's own: [`crate::zoom`]).
 //!
-//! Each press of a bound key, in the game with WestPlay on its screen, is counted for the app, which acts on
+//! Each press of a bound key, in the game with TruckersTV on its screen, is counted for the app, which acts on
 //! it. A binding with the interaction key counts only while the player uses the screen (the key held, or
-//! toggled on); one without it counts whenever, but not while the player types into WestPlay. While its
+//! toggled on); one without it counts whenever, but not while the player types into TruckersTV. While its
 //! binding counts, a bound key is kept from the game (the `keyboard` module asks [`taken`]), so the game
 //! never acts on it too. A mouse button bound is left to the game: it reads the mouse through DirectInput,
 //! and leaves its side buttons unbound.
@@ -34,14 +35,18 @@ pub fn on_frame() {
         let down = unsafe { GetAsyncKeyState(key as i32) } as u16 & 0x8000 != 0;
         // First: every frame's key state is kept, whether the press counts or not.
         if input::newly_down(&WAS_DOWN[i], down) && in_game && counts(with_interaction_key) {
-            bridge.plugin.keybind_presses[i].fetch_add(1, Ordering::AcqRel);
-            log!("keybind {keybind:?} pressed");
+            if keybind == Keybind::Zoom {
+                crate::zoom::toggle();
+            } else {
+                bridge.plugin.keybind_presses[i].fetch_add(1, Ordering::AcqRel);
+                log!("keybind {keybind:?} pressed");
+            }
         }
     }
 }
 
-/// Whether a binding counts now: with WestPlay on the screen, and either the screen in use (one with the
-/// interaction key) or the player not typing into WestPlay (one without it).
+/// Whether a binding counts now: with TruckersTV on the screen, and either the screen in use (one with the
+/// interaction key) or the player not typing into TruckersTV (one without it).
 fn counts(with_interaction_key: bool) -> bool {
     bridge::screen_on() && if with_interaction_key { input::interaction_active() } else { !typing::typing() }
 }

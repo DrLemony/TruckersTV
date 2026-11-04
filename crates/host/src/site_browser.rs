@@ -1,9 +1,10 @@
 //! An isolated, lazily created web browser composed into the cabin frame.
+use crate::signin::{Progress, SignInWindow};
 use crate::webview::{Error, OffscreenWebView, Stage};
 use serde::{Deserialize, Serialize};
 use std::{
     cell::RefCell,
-    path::Path,
+    path::{Path, PathBuf},
     rc::Rc,
     time::{Duration, Instant},
 };
@@ -30,6 +31,8 @@ pub enum Command {
     Show { x: f32, y: f32, width: u32, height: u32 },
     Zoom { factor: f64 },
     Input { event: Input },
+    /// A site app's sign-in, in a window on the desktop (signin.rs), on this browser's profile.
+    SignIn { app: String },
 }
 
 #[derive(Debug, PartialEq, Deserialize)]
@@ -49,7 +52,24 @@ struct State {
     error: Option<String>,
 }
 
+/// Whether what was typed without a scheme is a site (`netflix.com/x`, `localhost:3000`, an IPv4 address) rather
+/// than words to search for: no spaces, and a host with a letters-only top-level domain.
+fn looks_like_address(input: &str) -> bool {
+    let host = input.split(['/', '?', '#']).next().unwrap_or_default();
+    let host = match host.rsplit_once(':') {
+        Some((name, port)) if !port.is_empty() && port.chars().all(|c| c.is_ascii_digit()) => name,
+        _ => host,
+    };
+    !input.contains(char::is_whitespace)
+        && (host.eq_ignore_ascii_case("localhost")
+            || host.parse::<std::net::Ipv4Addr>().is_ok()
+            || host.rsplit_once('.').is_some_and(|(name, tld)| {
+                !name.is_empty() && tld.chars().count() >= 2 && tld.chars().all(char::is_alphabetic)
+            }))
+}
+
 /// Only web navigation, including redirects and popups. No local files, scripts, credentials or app origins.
+/// Words that aren't an address are a Google search.
 pub fn address(input: &str) -> Option<String> {
     let input = input.trim();
     if input.is_empty() || input.len() > 8192 {
@@ -62,8 +82,11 @@ pub fn address(input: &str) -> Option<String> {
         || input.starts_with("file:")
     {
         input.to_owned()
-    } else {
+    } else if looks_like_address(input) {
         format!("https://{input}")
+    } else {
+        // Plain words are a search, as in a browser's own address bar.
+        return url::Url::parse_with_params("https://www.google.com/search", [("q", input)]).ok().map(String::from);
     };
     let parsed = url::Url::parse(&candidate).ok()?;
     let host = parsed.host_str()?;
@@ -85,13 +108,33 @@ pub struct Browser {
     state: Rc<RefCell<State>>,
     focus: Rc<RefCell<Option<bool>>>,
     pub check_focus: bool,
+    /// The page was pressed: its full screen's X shows (the cabin page under it hears nothing of it).
+    pub pressed: bool,
     last_poll: Instant,
     sent: String,
+    /// The sign-in window open, and whose. The page shows signed in once it's closed.
+    sign_in: Option<(String, SignInWindow)>,
+    /// The site apps signed in, kept in `profile`.
+    signed_in: Vec<String>,
+    profile: PathBuf,
+    sent_sign_in: String,
+}
+
+const SIGNED_IN: &str = "signed-in.txt";
+
+/// The site apps signed in, as `profile` keeps them (a line each). A session running out isn't seen: their
+/// sign-in opens again from the companion.
+pub fn signed_in(profile: &Path) -> Vec<String> {
+    std::fs::read_to_string(profile.join(SIGNED_IN))
+        .map(|kept| kept.lines().map(str::to_owned).collect())
+        .unwrap_or_default()
 }
 
 impl Browser {
     pub fn new(stage: &Stage, profile: &Path) -> Result<Self, Error> {
-        let view = OffscreenWebView::new(stage, 800, 600, profile)?;
+        // Without the GPU (a browser's "hardware acceleration" off), protected video (Netflix's) is drawn where
+        // the screen's capture sees it, not black; Chrome's own process, so the cab's other views keep theirs.
+        let view = OffscreenWebView::with_arguments(stage, 800, 600, profile, "--disable-gpu")?;
         let core = view.core();
         let state = Rc::new(RefCell::new(State::default()));
         let focus = Rc::new(RefCell::new(None));
@@ -175,14 +218,21 @@ impl Browser {
             state,
             focus,
             check_focus: false,
+            pressed: false,
             last_poll: Instant::now() - Duration::from_secs(1),
             sent: String::new(),
+            sign_in: None,
+            signed_in: signed_in(profile),
+            profile: profile.to_owned(),
+            sent_sign_in: String::new(),
         })
     }
 
     pub fn command(&mut self, command: Command, stage: &Stage) -> Result<(), Error> {
         match command {
             Command::Navigate { url } => {
+                // The cabin page may be new: it's told who's signed in again.
+                self.sent_sign_in.clear();
                 if let Some(url) = address(&url) {
                     self.view.navigate(&url)?;
                 } else {
@@ -217,6 +267,15 @@ impl Browser {
             }
             Command::Reload => {
                 self.view.reload()?;
+            }
+            Command::SignIn { app } => {
+                if let Some((open, window)) = &self.sign_in
+                    && *open == app
+                {
+                    window.bring_forward();
+                } else if let Some(site) = crate::signin::site_of(&app) {
+                    self.sign_in = Some((app, SignInWindow::open(self.view.environment(), site)?));
+                }
             }
             Command::Zoom { factor } if factor.is_finite() => {
                 self.view.zoom(factor.clamp(0.5, 2.0))?;
@@ -288,16 +347,52 @@ impl Browser {
         }
     }
 
+    /// The site app whose sign-in window is open, for the companion.
+    pub fn signing_in(&self) -> Option<&str> {
+        self.sign_in.as_ref().map(|(app, _)| app.as_str())
+    }
+
+    /// The site apps signed in, for the companion.
+    pub fn signed_in(&self) -> &[String] {
+        &self.signed_in
+    }
+
     pub fn tick(&mut self, cabin: &OffscreenWebView) {
         if let Some(editable) = self.focus.borrow_mut().take() {
             let _ = cabin.post_json(
                 &serde_json::json!({"type":"browserFocus","editable":editable && self.area.is_some()}).to_string(),
             );
         }
+        if std::mem::take(&mut self.pressed) {
+            let _ = cabin.post_json(r#"{"type":"browserPress"}"#);
+        }
         if self.last_poll.elapsed() < Duration::from_millis(200) {
             return;
         }
         self.last_poll = Instant::now();
+        let progress = self.sign_in.as_ref().map(|(_, window)| window.progress());
+        if matches!(progress, Some(Progress::Closed | Progress::SignedIn)) {
+            if let Some((app, _)) = self.sign_in.take()
+                && progress == Some(Progress::SignedIn)
+                && !self.signed_in.contains(&app)
+            {
+                self.signed_in.push(app);
+                if let Err(error) = std::fs::write(self.profile.join(SIGNED_IN), self.signed_in.join("\n")) {
+                    crate::log!("[site browser] could not keep the sign-in: {error}");
+                }
+            }
+            let _ = self.view.reload();
+        }
+        let message = serde_json::json!({
+            "type": "browserSignIn",
+            "open": self.sign_in.is_some(),
+            "signedIn": self.signed_in,
+        })
+        .to_string();
+        if message != self.sent_sign_in {
+            let _ = cabin.post_json(&message);
+            self.sent_sign_in = message;
+        }
         if self.view.take_failure().is_some() {
             self.state.borrow_mut().error = Some("Browser stopped. Close and reopen it to try again.".into());
             self.state.borrow_mut().loading = false;
@@ -376,12 +471,12 @@ mod tests {
         };
         pump();
         for _ in 0..5 {
-            if view.evaluate("!!document.querySelector('button.app[data-app=safari]')").unwrap() == "true" {
+            if view.evaluate("!!document.querySelector('.tv-tile[data-app=chrome]')").unwrap() == "true" {
                 break;
             }
             pump();
         }
-        view.evaluate("document.querySelector('button.app[data-app=safari]').click()").unwrap();
+        view.evaluate("document.querySelector('.tv-tile[data-app=chrome]').click()").unwrap();
         pump();
         view.capture_png(&std::env::temp_dir().join("browser-preview.png")).unwrap();
         println!(
@@ -389,9 +484,9 @@ mod tests {
             view.evaluate("({errors:window.__errors,url:location.href, text:document.body.innerText.slice(0,600)})")
                 .unwrap()
         );
-        assert_eq!(view.evaluate("!!document.querySelector('.safari-bar')").unwrap(), "true");
+        assert_eq!(view.evaluate("!!document.querySelector('.chrome-bar')").unwrap(), "true");
         assert_eq!(
-            view.evaluate("document.querySelector('.safari-page').getBoundingClientRect().height > 100").unwrap(),
+            view.evaluate("document.querySelector('.chrome-page').getBoundingClientRect().height > 100").unwrap(),
             "true"
         );
         view.capture_png(&std::env::temp_dir().join("browser-preview.png")).unwrap();
@@ -400,6 +495,15 @@ mod tests {
     fn accepts_web_addresses_only() {
         assert_eq!(address(" example.org/a?q=1 ").unwrap(), "https://example.org/a?q=1");
         assert_eq!(address("http://localhost:8080").unwrap(), "http://localhost:8080/");
+        assert_eq!(address("netflix.com").unwrap(), "https://netflix.com/");
+        assert_eq!(address("localhost:3000/x").unwrap(), "https://localhost:3000/x");
+        assert_eq!(address("192.168.1.1").unwrap(), "https://192.168.1.1/");
+        assert_eq!(address("tod.com.tr/canli-tv").unwrap(), "https://tod.com.tr/canli-tv");
+        // Words are a search.
+        assert_eq!(address("galatasaray maçı").unwrap(), "https://www.google.com/search?q=galatasaray+ma%C3%A7%C4%B1");
+        assert_eq!(address("netflix").unwrap(), "https://www.google.com/search?q=netflix");
+        assert_eq!(address("hava durumu 3.5").unwrap(), "https://www.google.com/search?q=hava+durumu+3.5");
+        assert_eq!(address("v1.2").unwrap(), "https://www.google.com/search?q=v1.2");
         for value in [
             "",
             "javascript:alert(1)",

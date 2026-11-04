@@ -1,26 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { isReleasedApp, RELEASED_APP_IDS } from './apps'
+import { APP_ICONS, APP_IDS, isAppId } from './apps'
 
-describe('the apps this release has', () => {
-  it('leaves Podcasts, Phone and Messages for the release after 1.0, keeping Home’s order', () => {
-    expect(RELEASED_APP_IDS).toEqual([
-      'maps',
-      'music',
-      'spotify',
-      'youtube',
-      'youtubeMusic',
-      'safari',
-      'tv',
-      'weather',
-      'settings',
-    ])
+describe('apps', () => {
+  it('knows its own ids and no others', () => {
+    for (const app of APP_IDS) expect(isAppId(app)).toBe(true)
+    expect(isAppId('maps')).toBe(false)
+    expect(isAppId(3)).toBe(false)
   })
 
-  it('opens none of them from a saved screen or recent', () => {
-    expect(isReleasedApp('podcasts')).toBe(false)
-    expect(isReleasedApp('phone')).toBe(false)
-    expect(isReleasedApp('messages')).toBe(false)
-    expect(isReleasedApp('youtubeMusic')).toBe(true)
-    expect(isReleasedApp('nonsense')).toBe(false)
+  it('has an entry for each app', () => {
+    expect(Object.keys(APP_ICONS).sort()).toEqual([...APP_IDS].sort())
   })
 })

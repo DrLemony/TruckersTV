@@ -11,6 +11,7 @@ type Command =
   | { action: 'pause' | 'resume' | 'stop' }
   | { action: 'volume'; share: number }
   | { action: 'fetch'; id: number; url: string }
+  | { action: 'exit'; shown: boolean }
 
 /** The largest text a fetch passes on (a big M3U, Xtream's whole channel list). */
 const MAX_TEXT = 30_000_000
@@ -98,5 +99,11 @@ webview?.addEventListener('message', (event) => {
       return
     case 'fetch':
       return void fetchText(command.id, command.url)
+    case 'exit':
+      document.getElementById('exit')?.classList.toggle('shown', command.shown)
+      return
   }
 })
+
+// Heard from here on: the host holds what's asked until now.
+post({ type: 'ready' })

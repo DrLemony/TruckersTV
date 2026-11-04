@@ -1,19 +1,19 @@
-//! What WestPlay's setup did, kept between runs (`setup.json`, in WestPlay's config folder): the game it set
-//! WestPlay up in, the version of WestPlay that put its plugin and mod there, and whether the player went
+//! What TruckersTV's setup did, kept between runs (`setup.json`, in TruckersTV's config folder): the game it set
+//! TruckersTV up in, the version of TruckersTV that put its plugin and mod there, and whether the player went
 //! through the companion's onboarding to its end. Nothing about the player: no profile, no mod, no account.
 
 use std::io;
 use std::path::{Path, PathBuf};
 
-/// The file, in WestPlay's config folder.
+/// The file, in TruckersTV's config folder.
 pub const FILE_NAME: &str = "setup.json";
 
 #[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Record {
-    /// The game's folder WestPlay is set up in (its plugin, its mod, its map), once it is.
+    /// The game's folder TruckersTV is set up in (its plugin, its mod, its map), once it is.
     pub game: Option<PathBuf>,
-    /// The version of WestPlay that put its plugin and mod into that game: another one's (an update since)
+    /// The version of TruckersTV that put its plugin and mod into that game: another one's (an update since)
     /// are put in again.
     pub version: Option<String>,
     /// The onboarding was gone through to its end: the companion opens on its own pages from then on.

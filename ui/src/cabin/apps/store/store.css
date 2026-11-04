@@ -1,0 +1,195 @@
+.store-app {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  overflow-y: auto;
+  font-size: 26px;
+}
+.store-app h1 {
+  margin: 0;
+  font-size: 40px;
+  font-weight: 700;
+}
+.store-note {
+  margin: 0 0 8px;
+  opacity: 0.65;
+  font-size: 21px;
+}
+.store-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 16px;
+}
+.store-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 170px;
+  padding: 18px;
+  box-sizing: border-box;
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+}
+.store-card-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+.store-card-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.store-domain {
+  opacity: 0.6;
+  font-size: 20px;
+}
+.store-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 52px;
+}
+.store-ring {
+  width: 52px;
+  height: 52px;
+  transform: rotate(-90deg);
+}
+.store-ring circle {
+  fill: none;
+  stroke-width: 3.5;
+}
+.store-ring .track {
+  stroke: color-mix(in srgb, var(--text) 18%, transparent);
+}
+.store-ring .fill {
+  stroke: #0a84ff;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  animation: store-install linear forwards;
+}
+.store-ring rect {
+  fill: #0a84ff;
+}
+@keyframes store-install {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.store-icon {
+  width: 84px;
+  height: 84px;
+  flex-shrink: 0;
+  border-radius: 20px;
+  background: var(--web-tile);
+  object-fit: contain;
+  padding: 8px;
+  box-sizing: border-box;
+}
+.store-icon.letter,
+.app .web-icon.letter {
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--text) 18%, transparent);
+  color: var(--text);
+  font-weight: 700;
+}
+.store-icon.letter {
+  font-size: 36px;
+}
+.store-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+.shell .store-app button {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 22px;
+  min-height: 44px;
+  font: inherit;
+  font-size: 22px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.shell .store-app .store-get {
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+  color: #0a84ff;
+}
+.shell .store-app .store-remove {
+  background: none;
+  color: #ff453a;
+}
+.shell .store-app button:active {
+  opacity: 0.65;
+}
+
+/* An App Store app, open: its site fills the window. */
+.web-app-page {
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--app-background);
+  display: grid;
+  place-items: center;
+}
+
+/* On the whole TV: over everything in the cabin page, the bar and the app's margins. */
+.web-app-page.full {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+}
+
+/* The page's view is above this page, so nothing here shows over it: it moves down off the X. */
+.web-app-page.full.exit {
+  top: 13vh;
+}
+
+.web-app:has(.web-app-page.full)::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  background: black;
+}
+
+/* Its X, up out of the screen until a press on the page. */
+.shell .web-app-exit {
+  position: fixed;
+  top: 2vh;
+  left: 47vw;
+  z-index: 11;
+  width: 9vh;
+  height: 9vh;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 7vh;
+  line-height: 1;
+  color: #fff;
+  background: rgb(255 255 255 / 0.16);
+  translate: 0 -30vh;
+  transition: translate 350ms ease;
+}
+
+.shell .web-app-exit.shown {
+  translate: 0 0;
+}

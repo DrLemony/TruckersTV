@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 /**
- * A music app's questions to its web player (Apple Music's, Spotify's, YouTube Music's): each asked of the host
+ * A music app's questions to its web player (Spotify's, YouTube Music's): each asked of the host
  * with an id and answered with it, kept for the session (going back finds the page as it was), and asked afresh
  * for a page whose answer changes as the service is used.
  */

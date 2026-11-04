@@ -1208,7 +1208,7 @@
 }
 
 /* The cover (or the video's picture) beside the song: as high as there's room for, but no wider than half the
-   row, as on a 16:9 screen (owner 2026-10-24: on the tablet's taller screen the cover, sized by the height, grew
+   row, as on a 16:9 screen (on a taller screen the cover, sized by the height, grew
    and squeezed the song into a narrow column). A size container, for the cover and the song's spacing. */
 .shell .ytm-now-main {
   container-type: size;
@@ -1288,7 +1288,7 @@
 }
 
 /* The song: its title and artist, its chips, how far it is, the controls, the volume. Spaced further apart on a
-   taller screen (the tablet's), so they fill its height as the cover does: 16px at 16:9's height. */
+   taller screen, so they fill its height as the cover does: 16px at 16:9's height. */
 .shell .ytm-now-song {
   display: flex;
   flex-direction: column;

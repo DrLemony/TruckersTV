@@ -25,21 +25,17 @@ fn main() {
     }
 
     let data_dir = std::env::var_os("LOCALAPPDATA")
-        .map(|dir| PathBuf::from(dir).join("WestPlay"))
-        .unwrap_or_else(|| std::env::temp_dir().join("WestPlay"));
+        .map(|dir| PathBuf::from(dir).join("TruckersTV"))
+        .unwrap_or_else(|| std::env::temp_dir().join("TruckersTV"));
     let config = Config {
         width,
         height,
         content: url.map(Content::Url).unwrap_or_else(|| Content::Html(TEST_PAGE.to_string())),
         data_dir,
-        open_request: Arc::default(),
         accounts: Arc::default(),
         settings: Arc::new(SharedSettings::default()),
         // Nothing kept: the standalone host has no settings file.
         on_settings: Box::new(|_| {}),
-        customize_changed: Arc::default(),
-        // No map for the standalone host: the app's setup chooses the game.
-        game: Arc::default(),
         on_status: Box::new(|status| {
             println!(
                 "frames/s {:>3} (dropped total {}), game {}, screen {}{}",
@@ -51,12 +47,12 @@ fn main() {
             )
         }),
     };
-    // One WestPlay at a time (the app, or this).
+    // One TruckersTV at a time (the app, or this).
     let Some(_instance) = westplay_host::Instance::claim() else {
-        eprintln!("WestPlay is already running; quit it first.");
+        eprintln!("TruckersTV is already running; quit it first.");
         std::process::exit(1);
     };
-    println!("WestPlay host {width}x{height}; Ctrl+C to quit");
+    println!("TruckersTV host {width}x{height}; Ctrl+C to quit");
     if let Err(e) = run(config, Arc::new(AtomicBool::new(false))) {
         eprintln!("host failed: {e}");
         std::process::exit(1);

@@ -1,8 +1,4 @@
-/* WestPlay shell, 1280x720 canvas (DAF 2021 GPS screen). Glass = blur + soft light rim. */
-
-/* Motion: Apple's own curve, the one every WestPlay transition and animation moves on. iOS animates with a
-   critically damped spring: fast, then settling with no bounce. This is that curve (x = 1 - (1 + wt)e^-wt,
-   settled at the end), sampled for CSS. */
+/* The TV's shell, on its 1280 x 720 canvas, in Google TV's colours. */
 :root {
   --motion-ease: linear(
     0,
@@ -32,21 +28,10 @@
     1
   );
   --motion-duration: 650ms;
-  /* Outer margin: the DAF screen crops the image edge slightly. */
   --edge: 32px;
-  /* Every panel's corners, the same (owner 2026-10-27: "make it consistent", the widgets' looked right): the
-     sidebar, the widgets, the map, the apps' windows, the keyboard. A short screen's are smaller (below). */
   --panel-radius: 30px;
-  /* The sidebar's clock and signal at one size, whatever the Text Size (owner 2026-10-26: following it broke CarPlay's
-     look): the size they had at the default Text Size, 1.24. The sidebar as wide as the clock needs (118 units at 1,
-     the clock 89 of them), and the screens starting after it and a gap. */
-  --sidebar-scale: 1.24;
-  --sidebar-width: calc(118px + 89px * (var(--sidebar-scale) - 1));
-  --content-left: calc(var(--edge) + var(--sidebar-width) + 20px);
-  /* The sidebar's corners: just short of half its width. */
-  --sidebar-radius: calc(var(--sidebar-width) * 0.45);
-  /* Apple-style shadows: a faint contact shadow hugging the edge plus a wide, light ambient one; never one
-     dark blob. Icons take a drop-shadow (it follows their rounded shape); surfaces take a box-shadow. */
+  /* The bar over an open app (TvBar.tsx). */
+  --tv-bar: 48px;
   --shadow-icon: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.14)) drop-shadow(0 4px 10px rgb(0 0 0 / 0.12));
   --shadow-icon-large: drop-shadow(0 1.5px 2.5px rgb(0 0 0 / 0.14)) drop-shadow(0 8px 20px rgb(0 0 0 / 0.14));
   --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.12), 0 4px 12px rgb(0 0 0 / 0.14);
@@ -68,14 +53,12 @@ body,
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  /* Transparent: where the page draws nothing, the game's own screen shows through (see Shell.tsx). */
-  background: transparent;
-  /* A car screen, not a web page: no text selection, no dragging images, no tap flashes. */
+  background: #000;
+  /* A TV, not a web page: no text selection, no dragging images, no tap flashes. */
   user-select: none;
   -webkit-user-drag: none;
   -webkit-tap-highlight-color: transparent;
-  /* Instrument Sans writes Latin only; Inter, close to it, gives Cyrillic and Greek (each loaded only
-     when a page uses it). Other scripts come from Windows' own fonts. */
+  /* Instrument Sans writes Latin only; Inter, close to it, gives Cyrillic and Greek. */
   font-family: 'Instrument Sans Variable', 'Inter Variable', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -86,64 +69,45 @@ body,
   --glass: rgb(255 255 255 / 0.12);
   --glass-rim: rgb(255 255 255 / 0.32);
   --chip: rgb(0 0 0 / 0.22);
-  /* Behind an open app (CarPlay's system background). */
-  --app-background: #0b0b0d;
+  --app-background: #141b2e;
+  --web-tile: #1c1c1e;
+
+  /* What the apps colour themselves with. */
+  --ui-background: #141b2e;
+  --ui-card: #212b44;
+  --ui-card-raised: #2c3852;
+  --ui-label: #e8eaed;
+  --ui-label-secondary: rgb(232 234 237 / 0.65);
+  --ui-label-tertiary: rgb(232 234 237 / 0.35);
+  --ui-label-quaternary: rgb(235 235 245 / 0.18);
+  --ui-separator: rgb(232 234 237 / 0.12);
+  --ui-separator-opaque: #38383a;
+  --ui-fill: rgb(120 120 128 / 0.36);
+  --ui-fill-secondary: rgb(120 120 128 / 0.32);
+  --ui-fill-tertiary: rgb(118 118 128 / 0.24);
+  --ui-fill-quaternary: rgb(118 118 128 / 0.18);
+  --ui-red: rgb(255 66 69);
+  --ui-orange: rgb(255 146 48);
+  --ui-yellow: rgb(255 214 0);
+  --ui-green: #8ab4f8;
+  --ui-blue: #8ab4f8;
+  --ui-mint: rgb(0 218 195);
+  --ui-teal: rgb(0 210 224);
+  --ui-cyan: rgb(60 211 254);
+  --ui-indigo: rgb(109 124 255);
+  --ui-purple: rgb(219 52 242);
+  --ui-pink: rgb(255 55 95);
+  --ui-brown: rgb(183 138 102);
+  --ui-gray: rgb(142 142 147);
+  --ui-gray-2: rgb(99 99 102);
+  --ui-gray-3: rgb(72 72 74);
+  --ui-gray-4: rgb(58 58 60);
+  --ui-gray-5: rgb(44 44 46);
+  --ui-gray-6: rgb(28 28 30);
   position: relative;
   width: 100%;
   height: 100%;
   color: var(--text);
-}
-
-.shell.appearance-light {
-  --text: #14161a;
-  --text-dim: rgb(20 22 26 / 0.62);
-  --glass: rgb(255 255 255 / 0.42);
-  --glass-rim: rgb(255 255 255 / 0.75);
-  --chip: rgb(255 255 255 / 0.5);
-  --app-background: #f2f2f6;
-}
-
-/* Words over a cover the look's own wouldn't read on (contrast.ts): dark over a light one, white over a dark
-   one; what's behind them stays. Over Now Playing, the sidebar's too. */
-.shell .words-light,
-.shell:has(.am-now.open.words-light) .sidebar {
-  --text: #fff;
-  --text-dim: rgb(255 255 255 / 0.68);
-  --apple-label: #fff;
-  --apple-label-secondary: rgb(235 235 245 / 0.6);
-  --apple-label-tertiary: rgb(235 235 245 / 0.3);
-  color: var(--text);
-}
-
-.shell .words-dark,
-.shell:has(.am-now.open.words-dark) .sidebar {
-  --text: #14161a;
-  --text-dim: rgb(20 22 26 / 0.62);
-  --apple-label: #000;
-  --apple-label-secondary: rgb(60 60 67 / 0.6);
-  --apple-label-tertiary: rgb(60 60 67 / 0.3);
-  color: var(--text);
-}
-
-/* The CarPlay area's opaque base: black until the wallpaper image is ready. */
-.wallpaper-stack {
-  position: absolute;
-  inset: 0;
-  background: #000;
-}
-
-.wallpaper {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* Only the incoming wallpaper (on top of the outgoing one) animates. */
-.wallpaper + .wallpaper {
-  animation: fade-in var(--motion-duration) var(--motion-ease) both;
-  will-change: opacity;
 }
 
 @keyframes fade-in {
@@ -173,234 +137,28 @@ body,
   cursor: pointer;
 }
 
-/* Focus ring for keyboard/knob navigation (v1.x); invisible for mouse clicks. */
 .shell button:focus-visible {
-  outline: 3px solid var(--text);
-  outline-offset: 6px;
-  border-radius: 24px;
+  outline: 3px solid var(--ui-blue);
+  outline-offset: 3px;
 }
 
-/* The CarPlay area: the whole screen, or everything beside the truck's own OEM strip. Opaque. */
-.carplay {
+/* The whole TV. */
+.stage {
   position: absolute;
-  inset: 0 0 var(--oem-bottom, 0px) var(--oem-left, 0px);
+  inset: 0;
   overflow: hidden;
-  transition:
-    left var(--motion-duration) var(--motion-ease),
-    bottom var(--motion-duration) var(--motion-ease),
-    opacity 360ms var(--motion-ease),
-    transform var(--motion-spring-duration) var(--motion-ease),
-    visibility 0s;
+  background: var(--app-background);
 }
 
-/* Handed to the truck: CarPlay shrinks into WestPlay's button (its transform origin, Shell.tsx), staying
-   visible most of the way and fading only as it reaches the button, so it flows into it; the truck's own
-   screen shows. Hidden once small, so the screen underneath is the truck's alone. */
-.carplay.handed-over {
-  opacity: 0;
-  transform: scale(0.08);
-  visibility: hidden;
-  pointer-events: none;
-  transition:
-    left var(--motion-duration) var(--motion-ease),
-    bottom var(--motion-duration) var(--motion-ease),
-    opacity 280ms var(--motion-ease) 200ms,
-    transform var(--motion-spring-duration) var(--motion-ease),
-    visibility 0s var(--motion-spring-duration);
-}
-
-/* WestPlay's button on the truck's own screen, while it's handed over: brings CarPlay back. The stock
-   screen isn't part of the page, so there is nothing to blur behind it: a dark disc instead of glass. */
-.return-button {
-  position: absolute;
-  z-index: 15;
-  display: grid;
-  place-items: center;
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: rgb(22 22 24 / 0.8);
-  box-shadow:
-    inset 0 1.5px 0 rgb(255 255 255 / 0.18),
-    var(--shadow-raised);
-  opacity: 0;
-  scale: 0.6;
-  pointer-events: none;
-  /* Coming back, it gives way at once as CarPlay grows out of it. */
-  transition:
-    opacity 160ms var(--motion-ease),
-    scale 320ms var(--motion-ease);
-}
-
-/* It's there from the start of the shrink, growing on the same spring, so CarPlay flows into it. */
-.shell .return-button.shown {
-  opacity: 1;
-  scale: 1;
-  pointer-events: auto;
-  transition:
-    opacity 220ms var(--motion-ease) 40ms,
-    scale var(--motion-spring-duration) var(--motion-ease);
-}
-
-.shell .return-button.shown:active {
-  scale: 0.92;
-}
-
-.return-button img {
-  width: 46px;
-  height: 46px;
-  border-radius: 11px;
-}
-
-/* The screen profile's UI scale: below 1 lays CarPlay out in more space and draws it smaller. */
-.carplay-content {
+.stage-content {
   position: absolute;
   inset: 0;
-  zoom: var(--ui-scale, 1);
-  /* Its height decides a short screen's compact sidebar and keyboard (sidebar below, keyboard.css). */
-  container: carplay / size;
-}
-
-/* Browser previews only: where the game draws the truck's own strip. */
-.game-strip-preview {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: flex-end;
-  padding: 0 0 28px calc(var(--oem-left) + 28px);
-  background: repeating-linear-gradient(135deg, #1b1b1d 0 14px, #232326 14px 28px);
-  color: rgb(255 255 255 / 0.5);
-  font-size: 20px;
-  font-weight: 600;
+  container: stage / size;
 }
 
 .screen {
   position: absolute;
   inset: 0;
-}
-
-/* After the boot sequence, the first screen fades in. Other screen changes are animated by transitions.css;
-   screens have no entry animation of their own, so nothing can replay one when a transition ends. */
-.carplay-content.entering > .screen-slot > .screen {
-  animation: screen-in var(--motion-duration) var(--motion-ease) both;
-}
-
-@keyframes screen-in {
-  from {
-    opacity: 0;
-    transform: scale(0.985);
-  }
-}
-
-/* Sidebar: clock + signal, recent apps, Home button. */
-.sidebar {
-  position: absolute;
-  left: var(--edge);
-  top: var(--edge);
-  bottom: var(--edge);
-  width: var(--sidebar-width);
-  /* Almost a pill, like CarPlay's sidebar: the one panel not at --panel-radius (owner 2026-10-28: the 30 px
-     looked rectangular on it). The clock and the buttons kept clear of the round ends. */
-  border-radius: var(--sidebar-radius);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  padding: 40px 0 38px;
-  z-index: 1;
-}
-
-.status {
-  text-align: center;
-}
-
-/* The clock and the signal at the sidebar's own scale (--sidebar-scale), the sidebar as wide as they need. */
-.time {
-  font-size: calc(34px * var(--sidebar-scale));
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
-}
-
-.signal {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  margin-top: 4px;
-  font-size: calc(24px * var(--sidebar-scale));
-  font-weight: 600;
-}
-
-.recent {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-/* Like CarPlay, the app on screen isn't boxed: it's simply the top one (navigation puts it there). Pressing an
-   icon shrinks it a little, like iOS. */
-.recent button {
-  display: block;
-  border-radius: 20px;
-  transition: scale 160ms var(--motion-ease);
-}
-
-.shell .recent button:active {
-  scale: 0.92;
-}
-
-/* The copy of a sidebar icon its app grows out of (Sidebar.tsx), exactly over the icon. */
-.recent button {
-  position: relative;
-}
-
-.recent .launch-copy {
-  position: absolute;
-  inset: 0;
-}
-
-.recent img {
-  display: block;
-  width: 74px;
-  height: 74px;
-  filter: var(--shadow-icon);
-}
-
-/* The truck and Home buttons at the bottom of the sidebar. */
-.sidebar-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.sidebar-button {
-  display: grid;
-  place-items: center;
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  transition: scale 160ms var(--motion-ease);
-}
-
-.shell .sidebar-button:active {
-  scale: 0.92;
-}
-
-/* The Home button's two icons share its place; the one for where it goes shows. */
-.home-button svg {
-  grid-area: 1 / 1;
-  opacity: 0;
-  scale: 0.6;
-  transition:
-    opacity 300ms var(--motion-ease),
-    scale 300ms var(--motion-ease);
-}
-
-.home-button svg.shown {
-  opacity: 1;
-  scale: 1;
 }
 
 /* Screen interaction cursor (Cursor.tsx): a soft touch point, centred on the mouse position. Left idle it
@@ -447,67 +205,4 @@ body,
 
 .cursor.on-light .cursor-dot.pressed {
   background: rgb(0 0 0 / 0.36);
-}
-
-/* The outermost pixels of the image in the rim's colour (its `color`), where the game repeats them into a
-   screen's rim (Shell.tsx). 2 px: the game shrinks the image to 1024x512 for the screen, so its edge pixel
-   blends about 1.3 of ours. */
-.screen-rim {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  box-shadow: inset 0 0 0 2px currentColor;
-  /* Above the cursor (40), and during screen changes too, where the cursor has a layer of its own. */
-  z-index: 50;
-  view-transition-name: screen-rim;
-}
-
-/* A short screen (a small one, its UI scaled up: the 7" Scania's, about 466 px tall in its own units; the
-   others are 700 and more): smaller icons and buttons in the sidebar, so its three apps and both buttons fit
-   in its height. */
-@container carplay (max-height: 520px) {
-  /* Margins and gaps don't grow with the UI: smaller ones, and a slimmer sidebar, so the content keeps the
-     room (the sidebar's edge, its width and a gap: where the screens start, `--content-left`). */
-  .sidebar,
-  .screen-slot,
-  .keyboard {
-    --edge: 14px;
-    --tile-gap: 10px;
-    --panel-radius: 22px;
-    /* 96 units at a Text Size of 1, its clock (26 units) 68 of them. */
-    --sidebar-width: calc(96px + 68px * (var(--sidebar-scale) - 1));
-    --sidebar-radius: calc(var(--sidebar-width) * 0.45);
-    --content-left: calc(var(--edge) + var(--sidebar-width) + 10px);
-  }
-
-  .sidebar {
-    padding: 22px 0 18px;
-  }
-
-  .time {
-    font-size: calc(26px * var(--sidebar-scale));
-  }
-
-  .signal {
-    margin-top: 2px;
-    font-size: calc(18px * var(--sidebar-scale));
-  }
-
-  .recent {
-    gap: 10px;
-  }
-
-  .recent img {
-    width: 54px;
-    height: 54px;
-  }
-
-  .recent button {
-    border-radius: 15px;
-  }
-
-  .sidebar-button {
-    width: 50px;
-    height: 50px;
-  }
 }

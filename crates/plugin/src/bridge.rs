@@ -57,8 +57,8 @@ pub fn host_alive() -> bool {
     last.is_some_and(|(_, changed)| changed.elapsed() <= HOST_TIMEOUT)
 }
 
-/// Whether WestPlay is on the truck's screen: the app is running, the player hasn't switched it off, and the
-/// truck is one WestPlay supports.
+/// Whether TruckersTV is on the truck's screen: the app is running, the player hasn't switched it off, and the
+/// truck is one TruckersTV supports.
 pub fn screen_on() -> bool {
     host_alive()
         && crate::screens::on_supported_truck()

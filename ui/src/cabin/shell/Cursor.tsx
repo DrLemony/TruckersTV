@@ -21,8 +21,8 @@ interface CursorState {
  * ordinary mouse events, crates/host/src/pointer.rs). WebView2 draws no system cursor offscreen, so the page
  * draws its own: a soft touch point that follows the mouse and shrinks while pressed, gone when the player
  * lets go of the key (the host then sends the mouse out of the page). Left still for `IDLE_MS` (not
- * pressed), it fades away, off the map and the art, until the mouse moves again. Over something light (a light
- * page, a light cover) it goes dark, fading between (cursorLight.ts), as Apple Music's mini player does.
+ * pressed), it fades away, off the art, until the mouse moves again. Over something light (a light
+ * page, a light cover) it goes dark, fading between (cursorLight.ts).
  *
  * Where the host draws it (crates/host cursor.rs: into the frames the game takes, the moment the mouse moves;
  * the page's showed three or four frames late), the page draws none, and only says what's under it: light or not.

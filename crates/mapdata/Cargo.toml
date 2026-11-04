@@ -1,6 +1,6 @@
 [package]
 name = "westplay-mapdata"
-description = "Reads the map of the player's own copy of ETS2/ATS (sectors, prefabs, definitions) for WestPlay's Maps app"
+description = "Reads the player's own copy of ETS2/ATS (archives, definitions, saves)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

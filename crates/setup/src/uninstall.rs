@@ -1,11 +1,11 @@
-//! Taking WestPlay out of the game, for the companion's uninstall: its screens mod (from WestPlay's own folder,
-//! and from the game's `mod` folder, where WestPlay up to 1.2 put it), and its entry from each profile's
+//! Taking TruckersTV out of the game, for the companion's uninstall: its screens mod (from TruckersTV's own folder,
+//! and from the game's `mod` folder, where TruckersTV up to 1.2 put it), and its entry from each profile's
 //! active mods (so no profile asks for a mod that's gone). Installing does the last two as well, for a game
-//! WestPlay 1.2 set up: the mod is the plugin's to mount now. The plugin is `plugin::uninstall`'s; WestPlay's
+//! TruckersTV 1.2 set up: the mod is the plugin's to mount now. The plugin is `plugin::uninstall`'s; TruckersTV's
 //! own data is the app's to remove.
 //!
 //! A profile is changed in its list of active mods only (`save::without_mods`: a binary profile byte for
-//! byte but that list), checked before it's written (the profile without WestPlay reads back as the same
+//! byte but that list), checked before it's written (the profile without TruckersTV reads back as the same
 //! profile but for its entry), and written beside the old one and moved over it, so a profile is never left
 //! half-written. It's written as the game reads it, decrypted; the game encrypts it again when it next saves.
 
@@ -18,13 +18,13 @@ use westplay_mapdata::sii::Unit;
 use crate::game_mod;
 use crate::profiles;
 
-/// Removes WestPlay's screens mod (and a copy left half-written) from the game's `mod` folder in Documents,
-/// where WestPlay up to 1.2 put it (its own folder now: `game_mod`).
+/// Removes TruckersTV's screens mod (and a copy left half-written) from the game's `mod` folder in Documents,
+/// where TruckersTV up to 1.2 put it (its own folder now: `game_mod`).
 pub fn remove_mod(game_documents: &Path) -> io::Result<()> {
     remove_mod_from(&game_documents.join("mod"))
 }
 
-/// Removes WestPlay's screens mod (and a copy left half-written) from `dir`.
+/// Removes TruckersTV's screens mod (and a copy left half-written) from `dir`.
 pub fn remove_mod_from(dir: &Path) -> io::Result<()> {
     for file in [dir.join(game_mod::FILE_NAME), dir.join(format!("{}.partial", game_mod::FILE_NAME))] {
         match std::fs::remove_file(&file) {
@@ -36,12 +36,12 @@ pub fn remove_mod_from(dir: &Path) -> io::Result<()> {
     Ok(())
 }
 
-/// How a profile lists WestPlay's mod: its package is the mod's file without `.scs` (`westplay|WestPlay`).
+/// How a profile lists TruckersTV's mod: its package is the mod's file without `.scs` (`truckerstv|TruckersTV`).
 pub fn is_westplay(entry: &str) -> bool {
     entry.split('|').next() == Some(game_mod::FILE_NAME.trim_end_matches(".scs"))
 }
 
-/// What taking WestPlay out of the profiles did.
+/// What taking TruckersTV out of the profiles did.
 #[derive(Debug, Default, PartialEq)]
 pub struct ProfilesReport {
     /// Profiles that listed it, and no longer do.
@@ -50,12 +50,12 @@ pub struct ProfilesReport {
     pub failed: Vec<(PathBuf, String)>,
 }
 
-/// Takes WestPlay's mod out of every profile's active mods, in the game's Documents folder and Steam Cloud's
+/// Takes TruckersTV's mod out of every profile's active mods, in the game's Documents folder and Steam Cloud's
 /// (`steam_userdata`).
 pub fn remove_from_profiles(game_documents: &Path, steam_userdata: Option<&Path>) -> ProfilesReport {
     let mut report = ProfilesReport::default();
-    for profile in profiles::find(game_documents, steam_userdata, None) {
-        let file = profile.dir.join("profile.sii");
+    for profile in profiles::find(game_documents, steam_userdata) {
+        let file = profile.join("profile.sii");
         match remove_from_profile(&file) {
             Ok(true) => report.changed += 1,
             Ok(false) => {}
@@ -65,7 +65,7 @@ pub fn remove_from_profiles(game_documents: &Path, steam_userdata: Option<&Path>
     report
 }
 
-/// Takes WestPlay out of one profile file: `true` if it was listed.
+/// Takes TruckersTV out of one profile file: `true` if it was listed.
 pub fn remove_from_profile(file: &Path) -> Result<bool, String> {
     let data = std::fs::read(file).map_err(|e| e.to_string())?;
     let Some(changed) = save::without_mods(&data, is_westplay).map_err(|e| e.to_string())? else {
@@ -81,8 +81,8 @@ pub fn remove_from_profile(file: &Path) -> Result<bool, String> {
     Ok(true)
 }
 
-/// That the profile without WestPlay is the same profile in everything but its active mods, and those are
-/// the same but for WestPlay's.
+/// That the profile without TruckersTV is the same profile in everything but its active mods, and those are
+/// the same but for TruckersTV's.
 fn check(before: &[u8], after: &[u8]) -> Result<(), String> {
     let before = save::read(before).map_err(|e| e.to_string())?;
     let after = save::read(after).map_err(|e| e.to_string())?;
@@ -124,12 +124,12 @@ mod tests {
 
     #[test]
     fn knows_westplay_by_its_package() {
-        assert!(is_westplay("westplay|WestPlay"));
-        assert!(!is_westplay("westplay_extras|Something"));
+        assert!(is_westplay("truckerstv|TruckersTV"));
+        assert!(!is_westplay("truckerstv_extras|Something"));
         assert!(!is_westplay("promods|ProMods"));
     }
 
-    /// A text profile listing WestPlay loses that entry (and nothing else); one that doesn't is left alone,
+    /// A text profile listing TruckersTV loses that entry (and nothing else); one that doesn't is left alone,
     /// not even written.
     #[test]
     fn takes_westplay_out_of_a_profile() {
@@ -138,7 +138,7 @@ mod tests {
         std::fs::write(
             &file,
             "SiiNunit\n{\nuser_profile : _nameless.1 {\n profile_name: Western\n active_mods: 2\n \
-             active_mods[0]: \"westplay|WestPlay\"\n active_mods[1]: \"promods|ProMods\"\n}\n}\n",
+             active_mods[0]: \"truckerstv|TruckersTV\"\n active_mods[1]: \"promods|ProMods\"\n}\n}\n",
         )
         .unwrap();
         assert_eq!(remove_from_profile(&file), Ok(true));
@@ -163,8 +163,8 @@ mod tests {
         remove_mod(&docs).unwrap();
         assert!(!mods.join(game_mod::FILE_NAME).exists());
         assert!(mods.join("promods.scs").exists());
-        // WestPlay's own folder, its half-written copy too.
-        let ours = docs.join("WestPlay");
+        // TruckersTV's own folder, its half-written copy too.
+        let ours = docs.join("TruckersTV");
         std::fs::create_dir_all(&ours).unwrap();
         std::fs::write(ours.join(game_mod::FILE_NAME), b"mod").unwrap();
         std::fs::write(ours.join(format!("{}.partial", game_mod::FILE_NAME)), b"half").unwrap();

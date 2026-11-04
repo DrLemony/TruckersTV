@@ -1,6 +1,6 @@
 [package]
 name = "westplay-shared"
-description = "Bridge between the WestPlay game plugin and the WestPlay app: shared memory layout and names"
+description = "Bridge between the TruckersTV game plugin and the TruckersTV app: shared memory layout and names"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

@@ -5,7 +5,7 @@ import type { AppId } from './apps'
 import type { Route } from './navigation'
 
 /**
- * App launch and close animations, like iOS: an app grows out of the icon that opened it and shrinks back
+ * App launch and close animations: an app grows out of the icon that opened it and shrinks back
  * into its Home icon when it closes. Built on the View Transitions API: the browser snapshots the screen
  * before and after a navigation and animates between them; elements that carry the same transition name in
  * both snapshots morph into each other (the icon into the app window, or back). The motion is in
@@ -13,7 +13,7 @@ import type { Route } from './navigation'
  */
 
 /** Where the player clicked to open an app. */
-export type LaunchOrigin = 'home' | 'sidebar'
+export type LaunchOrigin = 'home'
 
 /** An app window animating between an icon and its full size. */
 export interface Launch {
@@ -23,22 +23,19 @@ export interface Launch {
   direction: 'open' | 'close'
 }
 
-/** What a navigation animates; `null` for a plain crossfade (Home and Dashboard, for one). */
+/** What a navigation animates; `null` for a plain crossfade. */
 export function launchFor(before: Route, after: Route, origin: LaunchOrigin | null): Launch | null {
   if (after.kind === 'app' && origin !== null && !(before.kind === 'app' && before.app === after.app)) {
     return { app: after.app, origin, direction: 'open' }
   }
-  // Closing to Home, the app shrinks into its Home icon; to the Dashboard, into its sidebar icon.
-  if (before.kind === 'app' && after.kind !== 'app') {
-    return { app: before.app, origin: after.kind === 'home' ? 'home' : 'sidebar', direction: 'close' }
-  }
+  // Closing, the app shrinks into its Home icon.
+  if (before.kind === 'app' && after.kind !== 'app') return { app: before.app, origin: 'home', direction: 'close' }
   return null
 }
 
 /**
  * The kind of screen change, for its motion (`html[data-transition]` in shell/transitions.css): an app
- * opening or closing, or a crossfade. (Home and the Dashboard trade places without one: CabinApp's
- * `Screens`.)
+ * opening or closing, or a crossfade.
  */
 export type TransitionKind = 'open' | 'close' | 'switch'
 
@@ -49,7 +46,7 @@ export function transitionKind(launch: Launch | null): TransitionKind {
 /** The transition name shared by the morphing icon and app window. */
 const APP_WINDOW = 'app-window'
 
-/** An element that can take part in a launch: an app's icon (on Home or in the sidebar), or its window. */
+/** An element that can take part in a launch: an app's icon on Home, or its window. */
 export type LaunchRole = { kind: 'icon'; origin: LaunchOrigin } | { kind: 'window' }
 
 interface LaunchState {
@@ -86,9 +83,6 @@ export function useLaunchStyle(app: AppId, role: LaunchRole): CSSProperties | un
 /** What the morphing element wears. */
 export const LAUNCH_STYLE: CSSProperties = { viewTransitionName: APP_WINDOW }
 
-/** Corner radius of the icon an app grows out of or shrinks into (Home icons are bigger). */
-const ICON_RADIUS: Record<LaunchOrigin, string> = { home: '31px', sidebar: '17px' }
-
 let running: ViewTransition | null = null
 
 /**
@@ -103,15 +97,6 @@ export function afterRunningTransition(next: () => void): void {
   }
   running.skipTransition()
   running.updateCallbackDone.catch(() => {}).finally(next)
-}
-
-/** Calls `next` once the screen change animating now (if any) has finished, without hurrying it. */
-export function whenTransitionEnds(next: () => void): void {
-  if (!running) {
-    next()
-    return
-  }
-  running.finished.catch(() => {}).finally(next)
 }
 
 /**
@@ -129,8 +114,6 @@ export function animateNavigation(launch: Launch | null, update: () => void): vo
   const root = document.documentElement
   flushSync(() => useLaunch.setState({ launch, phase: 'from' }))
   root.dataset.transition = transitionKind(launch)
-  if (launch) root.style.setProperty('--launch-icon-radius', ICON_RADIUS[launch.origin])
-  if (launch?.direction === 'close' && launch.origin === 'sidebar') intoSidebar(root)
 
   const transition = document.startViewTransition(() =>
     flushSync(() => {
@@ -143,48 +126,6 @@ export function animateNavigation(launch: Launch | null, update: () => void): vo
     if (running !== transition) return
     running = null
     delete root.dataset.transition
-    delete root.dataset.intoSidebar
-    root.style.removeProperty('--launch-icon-radius')
-    root.style.removeProperty('--launch-window-cut')
     useLaunch.setState({ launch: null, phase: 'from' })
-  })
-}
-
-/**
- * Closing into a sidebar icon, the window shrinks over the sidebar (shell/transitions.css), so it lands on
- * its icon in front, never behind the glass. App windows reach behind the sidebar, so that strip of it is
- * cut off (`--launch-window-cut`, a share of its width): at full size it doesn't cover the sidebar, only
- * what was beside it shows. Measured on the screen as it is before the change.
- */
-function intoSidebar(root: HTMLElement): void {
-  // The app showing (a slot put away is none).
-  const app = document.querySelector('.screen-slot:not(.away) .screen.app-window')?.getBoundingClientRect()
-  const sidebar = document.querySelector('.sidebar')?.getBoundingClientRect()
-  if (!app || !sidebar || app.width === 0) return
-  const cut = Math.min(0.5, Math.max(0, (sidebar.right - app.left) / app.width))
-  root.dataset.intoSidebar = ''
-  root.style.setProperty('--launch-window-cut', `${(cut * 100).toFixed(2)}%`)
-}
-
-/**
- * Runs `update` (a change of appearance) as one crossfade of the whole screen, the way iOS changes it: every
- * colour, the map and the wallpaper fade together, on Apple's curve (shell/transitions.css). A screen
- * change already animating keeps going, and the appearance just changes under it.
- */
-export function animateAppearance(update: () => void): void {
-  const root = document.documentElement
-  if (typeof document.startViewTransition !== 'function' || (running && root.dataset.transition !== 'appearance')) {
-    update()
-    return
-  }
-  running?.skipTransition()
-
-  root.dataset.transition = 'appearance'
-  const transition = document.startViewTransition(() => flushSync(update))
-  running = transition
-  transition.finished.finally(() => {
-    if (running !== transition) return
-    running = null
-    delete root.dataset.transition
   })
 }

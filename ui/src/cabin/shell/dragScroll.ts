@@ -5,7 +5,7 @@
  *
  * A drag goes to the nearest list that scrolls the way it goes (sideways on YouTube's chips moves the chips;
  * up or down there moves the list they're in). What it's let go over isn't clicked. Controls that handle a
- * drag of their own (sliders, the player's bar, the keyboard, the map) are left alone.
+ * drag of their own (sliders, the player's bar, the keyboard) are left alone.
  */
 
 /** How far (page pixels) the cursor moves with the button held before it's a drag, not a click. */
@@ -19,7 +19,7 @@ export const GLIDE_STOP = 0.02
 export const SPEED_WINDOW = 80
 
 /** Not dragged to scroll: controls with a drag of their own. */
-const OWN_DRAG = '[role="slider"], input, textarea, select, .yt-bar, .keyboard, .maplibregl-canvas, [data-own-drag]'
+const OWN_DRAG = '[role="slider"], input, textarea, select, .yt-bar, .keyboard, [data-own-drag]'
 
 export type Axis = 'x' | 'y'
 

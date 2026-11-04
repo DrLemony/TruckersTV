@@ -9,7 +9,7 @@ use windows::Win32::System::Registry::{
     HKEY, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, KEY_READ, RRF_RT_REG_SZ, RegCloseKey, RegEnumKeyExW, RegGetValueW,
     RegOpenKeyExW,
 };
-use windows::Win32::UI::Shell::{FOLDERID_Documents, FOLDERID_RoamingAppData, KF_FLAG_DEFAULT, SHGetKnownFolderPath};
+use windows::Win32::UI::Shell::{FOLDERID_Documents, KF_FLAG_DEFAULT, SHGetKnownFolderPath};
 use windows::core::{HSTRING, PCWSTR, PWSTR, w};
 
 use crate::vdf;
@@ -19,17 +19,6 @@ pub fn documents() -> Option<PathBuf> {
     // SAFETY: Windows hands back a CoTaskMem string, read before it's freed here.
     unsafe {
         let path = SHGetKnownFolderPath(&FOLDERID_Documents, KF_FLAG_DEFAULT, None).ok()?;
-        let result = path.to_string().ok().map(PathBuf::from);
-        CoTaskMemFree(Some(path.0 as *const _));
-        result
-    }
-}
-
-/// The player's roaming application data folder (`%APPDATA%`), where TruckersMP installs itself.
-pub fn roaming() -> Option<PathBuf> {
-    // SAFETY: Windows hands back a CoTaskMem string, read before it's freed here.
-    unsafe {
-        let path = SHGetKnownFolderPath(&FOLDERID_RoamingAppData, KF_FLAG_DEFAULT, None).ok()?;
         let result = path.to_string().ok().map(PathBuf::from);
         CoTaskMemFree(Some(path.0 as *const _));
         result
@@ -70,7 +59,7 @@ pub fn documents_folders() -> Vec<PathBuf> {
 }
 
 /// The homes the game is told to keep in its Steam launch options (`-homedir <folder>`), for each of Steam's
-/// users on this PC (owner 2026-10-21: a player's game lived in `D:\ETS2`; WestPlay read an old profile with
+/// users on this PC (owner 2026-10-21: a player's game lived in `D:\ETS2`; TruckersTV read an old profile with
 /// no mods from Documents).
 fn launch_homes() -> Vec<PathBuf> {
     let Some(steam) = steam() else { return Vec::new() };
@@ -110,10 +99,10 @@ fn homedir(options: &str) -> Option<PathBuf> {
     words.get(at + 1).filter(|folder| !folder.starts_with('-')).map(PathBuf::from)
 }
 
-/// WestPlay's own folder in Documents (in Windows' Documents, as the plugin finds it): its logs, and its
+/// TruckersTV's own folder in Documents (in Windows' Documents, as the plugin finds it): its logs, and its
 /// screens mod, which the plugin mounts into the game itself (`game_mod`).
 pub fn westplay_documents() -> Option<PathBuf> {
-    Some(documents()?.join("WestPlay"))
+    Some(documents()?.join("TruckersTV"))
 }
 
 /// The game's own folder in Documents: its profiles, mods and settings. Of the folders that may be Documents
@@ -294,7 +283,7 @@ mod tests {
 
     #[test]
     fn names_folders_plainly() {
-        assert_eq!(plain(Path::new(r"\\?\C:\Users\a\WestPlay\ui")), Path::new(r"C:\Users\a\WestPlay\ui"));
+        assert_eq!(plain(Path::new(r"\\?\C:\Users\a\TruckersTV\ui")), Path::new(r"C:\Users\a\TruckersTV\ui"));
         assert_eq!(plain(Path::new(r"\\?\UNC\server\share\ui")), Path::new(r"\\server\share\ui"));
         assert_eq!(plain(Path::new(r"C:\Users\a\ui")), Path::new(r"C:\Users\a\ui"));
         assert_eq!(plain(Path::new(r"\\server\share\ui")), Path::new(r"\\server\share\ui"));

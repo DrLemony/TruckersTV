@@ -1,495 +1,582 @@
-import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { type SignedIn, useAskOnce, useSignedIn } from './accounts'
-import { appVersion, call, PREVIEW_TUTORIAL } from './bridge'
-import { Onboarding } from './onboarding/Onboarding'
-import { languageOf, percent, type Words, wordsFor } from './onboarding/words'
-import { About } from './pages/About'
-import { useHeldKey } from './pages/heldKey'
-import { Lesson, TouchLayer } from './pages/Lesson'
-import { Launch, TourCard } from './pages/Tour'
-import { Accounts } from './pages/Accounts'
-import { Controls } from './pages/Controls'
-import { Customize } from './pages/Customize'
-import { type MapProgress, useMapProgress } from './mapProgress'
-import { MapPage } from './pages/MapPage'
-import { screenState } from './pages/page'
-import { ScreenPage } from './pages/ScreenPage'
-import { Setup } from './pages/Setup'
-import { Support } from './pages/Support'
-import { UninstallSheet } from './pages/UninstallSheet'
-import { FinishUpdate, UpdateSheet } from './pages/UpdateSheet'
-import { type CompanionWords, companionWords, type SectionId } from './pages/words'
-import { RoomText, n, WordsContext } from './room/room'
-import './room/room.css'
-import { GLOW, type Screen, ScreenContext } from './room/screen'
-import { type Banner, GlassCursor, type Pose, TruckScreen } from './room/TruckScreen'
-import { useDemo } from './room/useDemo'
+import { type ReactNode, useCallback, useEffect, useLayoutEffect, useState } from 'react'
+import { WEB_APPS } from '../cabin/apps/store/webApps'
+import { type Service, type SignedIn, useAskOnce, useSignedIn } from './accounts'
+import { appVersion, call } from './bridge'
+import '@fontsource-variable/overpass'
 import './companion.css'
-import { defaultMapAddress, type GameCheck, type SetupState, setupState } from './setup'
-import { FILES_BASE, useCustomizations } from './customize'
-import { type Offer, useUpdateOffer } from './update'
-import { type HostStatus, useHostStatus } from './useHostStatus'
-import { useKeyName } from './keys'
-import { DEFAULT_KEY, type SettingsState, useSettings } from './useSettings'
+import { KeyButton } from './KeyButton'
+import {
+  checkGame,
+  chooseGameFolder,
+  finishSetup,
+  type GameCheck,
+  type GameInfo,
+  gameRunning,
+  type InstallReport,
+  installIntoGame,
+  leavePc,
+  removeData,
+  type SetupState,
+  setupState,
+  uninstallFromGame,
+} from './setup'
+import {
+  type HostStatus,
+  siteSignIn,
+  spotifySignIn,
+  spotifySignOut,
+  useHostStatus,
+  youtubeSignIn,
+  youtubeSignOut,
+} from './useHostStatus'
+import { type Binding, DEFAULT_KEY, KEYBIND_IDS, type KeybindId, SENSITIVITY, useSettings } from './useSettings'
+import { type Words, wordsFor } from './words'
 
-/**
- * The companion window: its onboarding on the first run (until it's gone through), then the room it ends in.
- * The truck's screen stays in its dark room, turned aside at the right, the live WestPlay on it; the
- * sections are a list at the left, each with what it is now; the page in between. Each section shows on the
- * screen what it's about (its app, its banner, the cursor using it), as the onboarding's steps did.
- */
+const PAGES = ['status', 'keys', 'accounts', 'install'] as const
+type Page = (typeof PAGES)[number]
+
+/** The window: its first-run setup, then the pages down its left side. */
 export function Companion() {
-  const status = useHostStatus()
-  const settings = useSettings()
   const [setup, setSetup] = useState<SetupState | null>(null)
-  const [setupError, setSetupError] = useState<string | null>(null)
-  // After the onboarding, its tutorial (from its start, or skipped to its end), before setup's finished.
-  const [tutorial, setTutorial] = useState<'lesson' | 'launch' | null>(PREVIEW_TUTORIAL)
-  useEffect(() => {
+  const [error, setError] = useState<string | null>(null)
+  const status = useHostStatus()
+  const refresh = useCallback(() => {
     setupState()
       .then(setSetup)
-      .catch((e: unknown) => setSetupError(String(e)))
+      .catch((e: unknown) => setError(String(e)))
   }, [])
-  useShowWhenReady(setup !== null || setupError !== null)
-
-  if (!setup) return <div className="cp-blank">{setupError ?? ''}</div>
-  if (!setup.finished && !tutorial) {
-    // The onboarding set the game up: what's set up is read again (the companion read it before), then its
-    // tutorial.
-    const onboarded = (start: 'lesson' | 'launch') => {
-      setupState()
-        .then(setSetup, () => {})
-        .finally(() => setTutorial(start))
-    }
-    return <Onboarding initial={setup} status={status} settings={settings} onFinished={onboarded} />
-  }
-  return (
-    <Room
-      setup={setup}
-      status={status}
-      settings={settings}
-      tutorial={tutorial}
-      tutorialDone={() => {
-        setTutorial(null)
-        setupState().then(setSetup, () => setSetup({ ...setup, finished: true }))
-      }}
-    />
+  useEffect(refresh, [refresh])
+  useShowWhenReady(setup !== null || error !== null)
+  if (!setup) return <main className="tt tt-blank">{error}</main>
+  const w = wordsFor(setup.language)
+  return setup.finished ? (
+    <Main setup={setup} status={status} w={w} refresh={refresh} />
+  ) : (
+    <FirstRun setup={setup} w={w} done={refresh} />
   )
 }
 
-const SECTIONS: SectionId[][] = [
-  ['screen', 'controls', 'customize'],
-  ['accounts', 'map'],
-  ['setup', 'about'],
-  ['support'],
-]
-/** The sections in order: the tutorial's tour goes through them. */
-const TOUR = SECTIONS.flat()
-
-/** The room as it is: the tutorial's lesson (the screen full size), its tour of the sections, its end
- * (what to do in the game), or the companion. */
-type Phase = 'lesson' | 'tour' | 'launch' | 'room'
-
-/** Where the screen stands in each. */
-const POSE: Record<Phase, Pose> = { lesson: 'full', tour: 'aside', launch: 'final', room: 'aside' }
-
-/** The light the screen casts while each section is up. */
-const SECTION_GLOW: Record<SectionId, string> = {
-  screen: GLOW.home,
-  controls: GLOW.home,
-  customize: GLOW.home,
-  accounts: GLOW.youtube,
-  map: GLOW.maps,
-  setup: GLOW.scan,
-  about: GLOW.dashboard,
-  support: GLOW.home,
+/** The window shows once its first page is drawn. */
+function useShowWhenReady(ready: boolean) {
+  useLayoutEffect(() => {
+    if (ready) requestAnimationFrame(() => void call('companion_ready').catch(() => {}))
+  }, [ready])
 }
 
-/** How long a page's words take to leave before the next one's arrive. */
-const LEAVE_MS = 220
-/** The screen coming out of the onboarding's dive into its place (companion.css `.cp .ts`). */
-const ARRIVE_MS = 1300
-
-function Room({
+function Main({
   setup,
   status,
-  settings,
-  tutorial = null,
-  tutorialDone,
+  w,
+  refresh,
 }: {
   setup: SetupState
   status: HostStatus | null
-  settings: SettingsState
-  /** The tutorial, from where it starts; `null`: the companion. */
-  tutorial?: 'lesson' | 'launch' | null
-  tutorialDone?: () => void
+  w: Words
+  refresh(): void
 }) {
-  const [code] = useState(() => setup.language ?? languageOf(navigator.languages))
-  const words = wordsFor(code)
-  const cw = companionWords(code)
-  const [section, setSection] = useState<SectionId>('screen')
-  const [leaving, setLeaving] = useState(false)
-  const [phase, setPhase] = useState<Phase>(tutorial ?? 'room')
-  // The screen comes out of the dive the onboarding ended in, to where the phase has it.
-  const [arrivedPose, setArrivedPose] = useState(false)
-  const pose: Pose = arrivedPose ? POSE[phase] : 'dive'
-  const interactionKey = settings.settings?.interaction.key ?? DEFAULT_KEY
-  const held = useHeldKey(interactionKey, settings.settings?.interaction.mode ?? 'hold', phase === 'lesson')
-  const demo = useDemo()
-  const [powered, setPowered] = useState(false)
-  const [banner, setBanner] = useState<Banner | null>(null)
-  const [scanning, setScanning] = useState(false)
-  const [glow, setGlow] = useState(GLOW.home)
-  const [cursor, setCursor] = useState<{ x: number; y: number; pressing: boolean } | null>(null)
-  // What a check of the game found, for the pages that show it (Setup, Map): checked once, as they open.
-  const [check, setCheck] = useState<GameCheck | null>(null)
-  // Who's signed in, known at once (what was last known), and asked as the companion opens if never known.
-  const signedIn = useSignedIn(status)
-  useAskOnce()
-  // The uninstall sheet over the room, and the room fading as WestPlay leaves.
-  const [uninstalling, setUninstalling] = useState(false)
-  const [leavingPc, setLeavingPc] = useState(false)
-  // An update found, offered in its sheet once per version (Later puts it off; About opens it again).
-  const update = useUpdateOffer()
-  // The player's wallpapers and icon sets, for Customize and the room's screen.
-  const { custom, refresh: refreshCustom } = useCustomizations()
-  const [updateShown, setUpdateShown] = useState(false)
-  const offered = useRef<string | null>(null)
-  const root = useRef<HTMLDivElement>(null)
-  const arrived = useRef(performance.now() + ARRIVE_MS)
-
-  // Next frame, so the dive is drawn before it moves on; a window not drawing (minimised) gets there anyway.
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => setArrivedPose(true))
-    const timer = window.setTimeout(() => setArrivedPose(true), 150)
-    return () => {
-      cancelAnimationFrame(frame)
-      window.clearTimeout(timer)
-    }
-  }, [])
-
-  const { send } = demo
-  // The room's screen looks as the truck's does: the player's wallpaper and icons, as chosen.
-  const look = settings.settings?.look
-  useEffect(() => {
-    if (!demo.ready || !custom) return
-    send({
-      type: 'looks',
-      custom,
-      base: FILES_BASE,
-      wallpaper: look?.wallpaper ?? null,
-      iconSet: look?.iconSet ?? null,
-      iconStyle: look?.iconStyle ?? 'auto',
-    })
-  }, [demo.ready, custom, look?.wallpaper, look?.iconSet, look?.iconStyle, send])
-  const lastGo = useRef<{ route: string; at: number } | null>(null)
-  const screen: Screen = {
-    send,
-    go: (route) => {
-      const now = performance.now()
-      if (lastGo.current?.route === route && now - lastGo.current.at < 500) return
-      lastGo.current = { route, at: now }
-      send({ type: 'go', to: route })
-    },
-    locate: demo.locate,
-    ready: demo.ready,
-    banner: setBanner,
-    scan: setScanning,
-    glow: setGlow,
-    cursor: setCursor,
-    reboot: () => {
-      send({ type: 'power', on: false })
-      window.setTimeout(() => send({ type: 'power', on: true }), 450)
-    },
-    powered,
-    leaving,
-    settling: () => Math.max(0, arrived.current - performance.now()),
-  }
-
-  // On as soon as WestPlay in it is ready: it's been on all along (the player dove into it).
-  useEffect(() => {
-    if (!demo.ready || powered) return
-    send({ type: 'power', on: true })
-    setPowered(true)
-  }, [demo.ready, powered, send])
-  useEffect(() => {
-    if (demo.ready) send({ type: 'language', code })
-  }, [demo.ready, code, send])
-  // The player's map, on the screen's Maps.
-  const map = defaultMapAddress(status)
-  const mapKey = map ? `${map.base}#${map.built}` : ''
-  useEffect(() => {
-    if (map) send({ type: 'map', base: map.base, built: map.built })
-    // Keyed by the map's address and build.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapKey, demo.ready, send])
-
-  const open = (next: SectionId) => {
-    if (next === section || leaving) return
-    setLeaving(true)
-    window.setTimeout(() => {
-      setSection(next)
-      setLeaving(false)
-    }, LEAVE_MS)
-  }
-
-  const tilt = (event: React.PointerEvent) => {
-    const box = root.current?.getBoundingClientRect()
-    if (!box) return
-    root.current?.style.setProperty('--tilt-x', (((event.clientX - box.left) / box.width) * 2 - 1).toFixed(3))
-    root.current?.style.setProperty('--tilt-y', (((event.clientY - box.top) / box.height) * 2 - 1).toFixed(3))
-  }
-
-  const nextInTour = () => {
-    const at = TOUR.indexOf(section)
-    if (at === TOUR.length - 1) setPhase('launch')
-    else open(TOUR[at + 1])
-  }
-  const roomShown = phase === 'tour' || phase === 'room'
-  useEffect(() => {
-    if (!update || phase !== 'room' || offered.current === update.version) return
-    offered.current = update.version
-    setUpdateShown(true)
-  }, [update, phase])
-
-  // The maps being prepared, worked out once: the Map page's bar and the sidebar show the same.
-  const mapProgress = useMapProgress(status)
-  const page = {
-    status,
-    settings,
-    setup,
-    cw,
-    check,
-    mapProgress,
-    checked: setCheck,
-    signedIn,
-    uninstall: () => setUninstalling(true),
-    update,
-    showUpdate: () => setUpdateShown(true),
-    custom,
-    refreshCustom,
-    tutorial: () => setPhase('lesson'),
-  }
+  const [page, setPage] = useState<Page>('status')
+  useFinishUpdate(setup, refresh)
   return (
-    <div
-      ref={root}
-      className="ob cp"
-      lang={words.locale}
-      data-power={powered || undefined}
-      data-leaving-pc={leavingPc || undefined}
-      data-phase={phase}
-      style={{ '--section-glow': SECTION_GLOW[section] } as CSSProperties}
-      onPointerMove={tilt}
-    >
-      <TruckScreen frame={demo.frame} ready={demo.ready} pose={pose} glow={glow} banner={banner} scanning={scanning}>
-        <GlassCursor
-          x={cursor?.x ?? 640}
-          y={cursor?.y ?? 420}
-          pressing={cursor?.pressing ?? false}
-          visible={cursor !== null}
-        />
-        {phase === 'lesson' && <TouchLayer active={held} press={(at) => send({ type: 'press', ...at })} />}
-      </TruckScreen>
-      <WordsContext.Provider value={{ words, code }}>
-        <RoomText.Provider value={{ locale: words.locale, back: words.back }}>
-          <ScreenContext.Provider value={screen}>
-            {phase === 'lesson' && (
-              <Lesson
-                cw={cw}
-                interactionKey={interactionKey}
-                held={held}
-                route={demo.route}
-                next={() => {
-                  open('screen')
-                  setPhase('tour')
-                }}
-              />
-            )}
-            {phase === 'launch' && (
-              <Launch
-                done={() => {
-                  setPhase('room')
-                  tutorialDone?.()
-                }}
-              />
-            )}
-            {roomShown && (
-              <SectionList
-                section={section}
-                open={open}
-                cw={cw}
-                words={words}
-                status={status}
-                signedIn={signedIn}
-                settings={settings}
-                setup={setup}
-                update={update}
-                mapProgress={mapProgress}
-              />
-            )}
-            {roomShown && section === 'screen' && <ScreenPage {...page} />}
-            {roomShown && section === 'controls' && <Controls {...page} />}
-            {roomShown && section === 'customize' && <Customize {...page} />}
-            {roomShown && section === 'accounts' && <Accounts {...page} />}
-            {roomShown && section === 'map' && <MapPage {...page} />}
-            {roomShown && section === 'setup' && <Setup {...page} />}
-            {roomShown && section === 'about' && <About {...page} />}
-            {roomShown && section === 'support' && <Support {...page} />}
-            {phase === 'tour' && (
-              <TourCard cw={cw} section={section} last={section === TOUR[TOUR.length - 1]} next={nextInTour} />
-            )}
-            {uninstalling && (
-              <UninstallSheet cw={cw} close={() => setUninstalling(false)} farewell={() => setLeavingPc(true)} />
-            )}
-            {updateShown && update && !uninstalling && (
-              <UpdateSheet cw={cw} offer={update} close={() => setUpdateShown(false)} />
-            )}
-            {phase === 'room' && <FinishUpdate cw={cw} setup={setup} />}
-          </ScreenContext.Provider>
-        </RoomText.Provider>
-      </WordsContext.Provider>
+    <main className="tt">
+      <nav className="tt-rail">
+        <div className="tt-brand">
+          <img src="/logo.svg" alt="" />
+          <span>
+            Truckers<b>TV</b>
+          </span>
+        </div>
+        <ol>
+          {PAGES.map((each, index) => (
+            <li key={each}>
+              <button type="button" className={each === page ? 'on' : undefined} onClick={() => setPage(each)}>
+                <i>{String(index + 1).padStart(2, '0')}</i>
+                {w.nav[each]}
+              </button>
+            </li>
+          ))}
+        </ol>
+        <i className="tt-road" />
+      </nav>
+      <section className="tt-page" key={page}>
+        {page === 'status' && <StatusPage status={status} w={w} />}
+        {page === 'keys' && <KeysPage w={w} />}
+        {page === 'accounts' && <AccountsPage status={status} w={w} />}
+        {page === 'install' && <InstallPage setup={setup} w={w} refresh={refresh} />}
+      </section>
+    </main>
+  )
+}
+
+/** A new version's plugin and mod go into the game on their own, once it's closed. */
+function useFinishUpdate(setup: SetupState, refresh: () => void) {
+  const running = useGameRunning()
+  const dir = setup.updated ? setup.game?.dir : undefined
+  useEffect(() => {
+    if (!dir || running !== false) return
+    installIntoGame(dir, false).then((report) => report.done && refresh(), () => {})
+  }, [dir, running, refresh])
+}
+
+/** Whether the game is running, looked at every couple of seconds (`null`: not known yet). */
+function useGameRunning(): boolean | null {
+  const [running, setRunning] = useState<boolean | null>(null)
+  useEffect(() => {
+    const look = () => void gameRunning().then(setRunning, () => {})
+    look()
+    const timer = window.setInterval(look, 2000)
+    return () => window.clearInterval(timer)
+  }, [])
+  return running
+}
+
+function Row({ title, detail, children }: { title: string; detail?: string | null; children?: ReactNode }) {
+  return (
+    <div className="tt-row">
+      <span>
+        <b>{title}</b>
+        {detail && <small>{detail}</small>}
+      </span>
+      {children}
     </div>
   )
 }
 
-/**
- * The sections, at the left: WestPlay's name and where it is now, then each section with what it is now
- * (WestPlay on or off, the key, who's signed in, the map, the game's version, WestPlay's own or an update), in
- * groups. The one that's open is lit by a capsule of glass that glides from section to section.
- */
-function SectionList({
-  section,
-  open,
-  cw,
-  words,
-  status,
-  signedIn,
-  settings,
-  setup,
-  update,
-  mapProgress,
-}: {
-  section: SectionId
-  open(section: SectionId): void
-  cw: CompanionWords
-  words: Words
-  status: HostStatus | null
-  signedIn: SignedIn
-  settings: SettingsState
-  setup: SetupState
-  update: Offer | null
-  mapProgress: MapProgress
-}) {
-  const list = useRef<HTMLElement>(null)
-  const [lit, setLit] = useState<{ top: number; height: number } | null>(null)
-  const version = useVersion()
-  const state = screenState(status)
-  const keyName = useKeyName(settings.settings?.interaction.key ?? DEFAULT_KEY, words)
-
-  useLayoutEffect(() => {
-    const row = list.current?.querySelector<HTMLElement>(`[data-section="${section}"]`)
-    if (row) setLit({ top: row.offsetTop, height: row.offsetHeight })
-  }, [section])
-
-  const value: Record<SectionId, string> = {
-    screen:
-      state === 'live'
-        ? cw.values.on
-        : state === 'original'
-          ? cw.values.off
-          : state === 'notInCab'
-            ? cw.values.waiting
-            : state === 'unsupported'
-              ? cw.screen.screenUnsupported
-              : '',
-    controls: keyName,
-    customize: '',
-    accounts:
-      signedIn.youtube === null && signedIn.spotify === null && signedIn.appleMusic === null
-        ? ''
-        : [signedIn.youtube && 'YouTube', signedIn.spotify && 'Spotify', signedIn.appleMusic && 'Apple Music']
-            .filter(Boolean)
-            .join(', ') || cw.values.none,
-    map: mapValue(status, mapProgress, cw, words),
-    setup: setup.game?.version ?? '',
-    about: update ? cw.update.badge : version,
-    support: '',
-  }
-
-  let place = 2
+function Heading({ title, sub }: { title: string; sub: string }) {
   return (
-    <nav ref={list} className="cp-list" aria-label="WestPlay">
-      <header className="cp-brand ob-in" style={n(0)}>
-        <img src="/westplay.png" alt="" />
-        <span>
-          <b>WestPlay</b>
-          <span className="cp-state" data-state={state}>
-            <i />
-            {cw.state[state]}
-          </span>
-        </span>
-      </header>
-      {lit && <i className="cp-lit" style={{ top: lit.top, height: lit.height }} />}
-      {SECTIONS.map((group, g) => (
-        <div key={g} className="cp-group">
-          {group.map((id) => (
-            <button
-              key={id}
-              type="button"
-              className="cp-row ob-in"
-              style={n(place++)}
-              data-section={id}
-              data-here={id === section || undefined}
-              onClick={() => open(id)}
-            >
-              <b>{cw.sections[id]}</b>
-              <span>{value[id]}</span>
-            </button>
-          ))}
-        </div>
-      ))}
-    </nav>
+    <header className="tt-heading">
+      <h1>{title}</h1>
+      <p>{sub}</p>
+    </header>
   )
 }
 
-function mapValue(status: HostStatus | null, progress: MapProgress, cw: CompanionWords, words: Words): string {
-  const map = status?.map
-  switch (map?.state) {
-    case 'ready':
-    case 'building':
-      // The maps being made (one after another): how far, the Map page's bar's number.
-      return progress.building ? percent(words, progress.shown) : cw.values.ready
-    case 'waitingForGame':
-    case 'waitingForMemory':
-      return cw.values.waiting
+type ScreenState = keyof Words['state']
+
+function screenState(status: HostStatus | null): ScreenState {
+  if (!status) return 'starting'
+  if (status.error) return 'stopped'
+  if (!status.gameConnected) return 'noGame'
+  if (status.truckSupported === false) return 'unsupported'
+  return status.screenDrawing ? 'live' : 'notInCab'
+}
+
+function StatusPage({ status, w }: { status: HostStatus | null; w: Words }) {
+  const state = screenState(status)
+  const { settings, update } = useSettings()
+  const videos = settings?.tv.videos ?? null
+  const setVideos = (folder: string | null) => {
+    if (settings) void update({ ...settings, tv: { ...settings.tv, videos: folder } })
+  }
+  return (
+    <>
+      <div className={`tt-state ${state}`}>
+        <i />
+        <div>
+          <h1>{w.state[state][0]}</h1>
+          <p>{w.state[state][1]}</p>
+        </div>
+        {state === 'live' && <span>{w.framesValue(status?.framesPerSecond ?? 0)}</span>}
+      </div>
+      {status?.error && <p className="tt-note bad">{status.error}</p>}
+      <h2>{w.howTo}</h2>
+      <ol className="tt-steps">
+        {w.steps.map((step) => (
+          <li key={step}>{step}</li>
+        ))}
+      </ol>
+      <Row title={w.videos} detail={videos ?? w.videosDetail}>
+        {videos && (
+          <button type="button" className="tt-button quiet" onClick={() => setVideos(null)}>
+            {w.clear}
+          </button>
+        )}
+        <button
+          type="button"
+          className="tt-button quiet"
+          onClick={() => void call<string | null>('pick_tv_videos', { title: w.videos }).then((f) => f && setVideos(f))}
+        >
+          {w.choose}
+        </button>
+      </Row>
+    </>
+  )
+}
+
+function KeysPage({ w }: { w: Words }) {
+  const { settings, update, error } = useSettings()
+  const k = w.keys
+  const [listening, setListening] = useState<KeybindId | 'screen' | null>(null)
+  const [refused, setRefused] = useState<string | null>(null)
+  const listen = useCallback(
+    (which: KeybindId | 'screen') => (on: boolean) => {
+      setListening(on ? which : null)
+      if (on) setRefused(null)
+    },
+    [],
+  )
+  if (!settings) return <Heading title={k.title} sub={k.sub} />
+  const screenKey = settings.interaction.key ?? DEFAULT_KEY
+  const names: Record<KeybindId, string> = {
+    volumeUp: k.volumeUp,
+    volumeDown: k.volumeDown,
+    playPause: k.playPause,
+    zoom: k.zoom,
+  }
+  // What `binding` would clash with, if anything: the TV's key, or another keybind pressed the same way.
+  const clash = (binding: Binding, except: KeybindId | 'screen'): string | null => {
+    if (except !== 'screen' && binding.key === screenKey) return k.useScreen
+    for (const id of KEYBIND_IDS) {
+      if (id === except) continue
+      const other = settings.keybinds[id]
+      const same = other.key === binding.key && other.withInteractionKey === binding.withInteractionKey
+      if (except === 'screen' ? other.key === binding.key : same) return names[id]
+    }
+    return null
+  }
+  const choose = (which: KeybindId | 'screen') => (binding: Binding) => {
+    const taken = clash(binding, which)
+    if (taken) return setRefused(k.inUse(taken))
+    setRefused(null)
+    if (which === 'screen') void update({ ...settings, interaction: { ...settings.interaction, key: binding.key } })
+    else void update({ ...settings, keybinds: { ...settings.keybinds, [which]: binding } })
+  }
+  return (
+    <>
+      <Heading title={k.title} sub={k.sub} />
+      <Row title={k.useScreen}>
+        <KeyButton
+          binding={{ key: screenKey, withInteractionKey: false }}
+          label={k.useScreen}
+          listening={listening === 'screen'}
+          listen={listen('screen')}
+          choose={choose('screen')}
+          w={w}
+        />
+      </Row>
+      <Row title={k.toggle} detail={k.toggleDetail}>
+        <Switch
+          on={settings.interaction.mode === 'toggle'}
+          label={k.toggle}
+          change={(on) =>
+            void update({ ...settings, interaction: { ...settings.interaction, mode: on ? 'toggle' : 'hold' } })
+          }
+        />
+      </Row>
+      <SpeedRow
+        saved={settings.interaction.sensitivity}
+        label={k.speed}
+        save={(sensitivity) => void update({ ...settings, interaction: { ...settings.interaction, sensitivity } })}
+      />
+      {KEYBIND_IDS.map((id) => (
+        <Row key={id} title={names[id]}>
+          <KeyButton
+            binding={settings.keybinds[id]}
+            with={screenKey}
+            label={names[id]}
+            listening={listening === id}
+            listen={listen(id)}
+            choose={choose(id)}
+            w={w}
+          />
+        </Row>
+      ))}
+      {(refused ?? error) && <p className="tt-note bad">{refused ?? error}</p>}
+    </>
+  )
+}
+
+function Switch({ on, label, change }: { on: boolean; label: string; change(on: boolean): void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      className={on ? 'tt-switch on' : 'tt-switch'}
+      onClick={() => change(!on)}
+    >
+      <i />
+    </button>
+  )
+}
+
+/** The pointer's speed: its slider follows the thumb, and it's saved once it's let go. */
+function SpeedRow({ saved, label, save }: { saved: number; label: string; save(value: number): void }) {
+  const [dragging, setDragging] = useState<number | null>(null)
+  const value = dragging ?? saved
+  const commit = () => {
+    if (dragging !== null) save(dragging)
+    setDragging(null)
+  }
+  return (
+    <Row title={label}>
+      <span className="tt-value">{`${value.toFixed(1)}×`}</span>
+      <input
+        type="range"
+        className="tt-range"
+        aria-label={label}
+        min={SENSITIVITY.min}
+        max={SENSITIVITY.max}
+        step={SENSITIVITY.step}
+        value={value}
+        onChange={(event) => setDragging(Number(event.target.value))}
+        onPointerUp={commit}
+        onKeyUp={commit}
+      />
+    </Row>
+  )
+}
+
+const SERVICES: {
+  id: Service
+  name: string
+  signIn(): Promise<void>
+  signOut(): Promise<void>
+  signingIn(status: HostStatus | null): boolean
+}[] = [
+  {
+    id: 'youtube',
+    name: 'YouTube',
+    signIn: youtubeSignIn,
+    signOut: youtubeSignOut,
+    signingIn: (status) => status?.youtubeSigningIn ?? false,
+  },
+  {
+    id: 'spotify',
+    name: 'Spotify',
+    signIn: spotifySignIn,
+    signOut: spotifySignOut,
+    signingIn: (status) => status?.spotifySigningIn ?? false,
+  },
+]
+
+function AccountsPage({ status, w }: { status: HostStatus | null; w: Words }) {
+  const a = w.accounts
+  const signedIn: SignedIn = useSignedIn(status)
+  useAskOnce()
+  return (
+    <>
+      <Heading title={a.title} sub={a.sub} />
+      {SERVICES.map((service) => {
+        const on = signedIn[service.id] === true
+        const opening = service.signingIn(status)
+        return (
+          <Row
+            key={service.id}
+            title={service.name}
+            detail={opening ? a.finishInWindow : on ? a.signedIn : a.notSignedIn}
+          >
+            <button
+              type="button"
+              className={on ? 'tt-button quiet' : 'tt-button'}
+              disabled={opening}
+              onClick={() => void (on ? service.signOut() : service.signIn())}
+            >
+              {on ? a.signOut : a.signIn}
+            </button>
+          </Row>
+        )
+      })}
+      {WEB_APPS.map((app) => {
+        const opening = status?.siteSigningIn === app.id
+        const on = status?.siteSignedIn.includes(app.id) ?? false
+        return (
+          <Row key={app.id} title={app.name} detail={opening ? a.finishInWindow : on ? a.signedIn : a.notSignedIn}>
+            <button
+              type="button"
+              className={on ? 'tt-button quiet' : 'tt-button'}
+              disabled={opening}
+              onClick={() => void siteSignIn(app.id)}
+            >
+              {on ? a.signInAgain : a.signIn}
+            </button>
+          </Row>
+        )
+      })}
+    </>
+  )
+}
+
+/** What the install said, for the player. */
+function installNote(report: InstallReport, w: Words): string | null {
+  const i = w.install
+  if (report.modError) return report.modError
+  switch (report.plugin.state) {
+    case 'installed':
+      return null
+    case 'inUse':
+      return i.inUse
+    case 'needsAdministrator':
+      return i.needsAdministrator
+    case 'declined':
+      return i.declined
     case 'failed':
-    case 'notAllowed':
-      return cw.values.failed
-    default:
-      return ''
+      return report.plugin.error
   }
 }
 
-/** WestPlay's version, once the app has said. */
-function useVersion(): string {
-  const [version, setVersion] = useState('')
-  useEffect(() => {
-    appVersion().then(setVersion, () => setVersion(''))
-  }, [])
-  return version
+/** Installing into the game: what it said, whether it needs Windows' permission next, and doing it. */
+function useInstall(dir: string | undefined, installed: () => void) {
+  const [working, setWorking] = useState(false)
+  const [report, setReport] = useState<InstallReport | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const state = report?.plugin.state
+  const administrator = state === 'needsAdministrator' || state === 'declined'
+  const install = async () => {
+    if (!dir) return
+    setWorking(true)
+    setError(null)
+    try {
+      const result = await installIntoGame(dir, administrator)
+      setReport(result)
+      if (result.done) installed()
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setWorking(false)
+    }
+  }
+  return { working, report, error, administrator, install }
 }
 
-/** The window starts hidden (so it never shows blank while this page loads): it shows once `ready`, after the
- * page has painted. */
-function useShowWhenReady(ready: boolean) {
-  useEffect(() => {
-    if (!ready) return
-    // Two frames: the first screen is laid out, then painted.
-    let frame = requestAnimationFrame(() => {
-      frame = requestAnimationFrame(() => {
-        call('companion_ready').catch((error: unknown) => console.error('The window could not be shown', error))
-      })
-    })
-    return () => cancelAnimationFrame(frame)
-  }, [ready])
+function InstallPage({ setup, w, refresh }: { setup: SetupState; w: Words; refresh(): void }) {
+  const i = w.install
+  const game = setup.game
+  const running = useGameRunning()
+  const [check, setCheck] = useState<GameCheck | null>(null)
+  const [version, setVersion] = useState('')
+  const [leaving, setLeaving] = useState(false)
+  const look = useCallback(() => {
+    if (game) checkGame(game.dir).then(setCheck, () => {})
+  }, [game])
+  useEffect(look, [look])
+  useEffect(() => void appVersion().then(setVersion), [])
+  const installing = useInstall(game?.dir, () => {
+    look()
+    refresh()
+  })
+  const note = installing.report && installNote(installing.report, w)
+  return (
+    <>
+      <Heading title={i.title} sub={i.sub} />
+      {game && <Row title={i.folder} detail={game.dir} />}
+      {game && <Row title={i.version} detail={game.version} />}
+      <Row title={i.plugin} detail={check ? i.pluginStates[check.plugin] : '…'}>
+        <button
+          type="button"
+          className="tt-button"
+          disabled={!game || running !== false || installing.working}
+          onClick={() => void installing.install()}
+        >
+          {installing.administrator ? i.asAdministrator : i.reinstall}
+        </button>
+      </Row>
+      {running && <p className="tt-note">{i.closeGame}</p>}
+      {installing.report?.done && <p className="tt-note">{i.installed}</p>}
+      {(note ?? installing.error) && <p className="tt-note bad">{note ?? installing.error}</p>}
+      <Row title={i.app} detail={`${version} · ${i.origin}`}>
+        <button type="button" className="tt-button danger" onClick={() => setLeaving(true)}>
+          {i.uninstall}
+        </button>
+      </Row>
+      {leaving && <Uninstall w={w} running={running} close={() => setLeaving(false)} />}
+    </>
+  )
 }
+
+function Uninstall({ w, running, close }: { w: Words; running: boolean | null; close(): void }) {
+  const u = w.uninstall
+  const [keep, setKeep] = useState(false)
+  const [working, setWorking] = useState(false)
+  const [needsAdministrator, setNeedsAdministrator] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const go = async () => {
+    setWorking(true)
+    setError(null)
+    try {
+      const report = await uninstallFromGame(needsAdministrator)
+      if (report.done) {
+        await removeData(keep)
+        await leavePc(keep)
+        return
+      }
+      const state = report.plugin.state
+      setNeedsAdministrator(state === 'needsAdministrator' || state === 'declined')
+      setError(report.modError ?? (state === 'failed' ? report.plugin.error : w.install.closeGame))
+    } catch (e) {
+      setError(String(e))
+    }
+    setWorking(false)
+  }
+  return (
+    <div className="tt-veil" onClick={working ? undefined : close}>
+      <div className="tt-sheet" role="dialog" aria-label={u.title} onClick={(event) => event.stopPropagation()}>
+        <h2>{u.title}</h2>
+        <p>{u.text}</p>
+        <Row title={u.keep}>
+          <Switch on={keep} label={u.keep} change={setKeep} />
+        </Row>
+        {running && <p className="tt-note">{w.install.closeGame}</p>}
+        {error && <p className="tt-note bad">{error}</p>}
+        <div className="tt-sheet-actions">
+          <button type="button" className="tt-button quiet" disabled={working} onClick={close}>
+            {u.cancel}
+          </button>
+          <button type="button" className="tt-button danger" disabled={working || running !== false} onClick={() => void go()}>
+            {working ? u.working : needsAdministrator ? w.install.asAdministrator : u.confirm}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** The first run: the game found (or chosen), the plugin put in, and on to the pages. */
+function FirstRun({ setup, w, done }: { setup: SetupState; w: Words; done(): void }) {
+  const s = w.setup
+  const [game, setGame] = useState<GameInfo | null>(setup.game ?? setup.found[0] ?? null)
+  const [error, setError] = useState<string | null>(null)
+  const [installed, setInstalled] = useState(false)
+  const running = useGameRunning()
+  const installing = useInstall(game?.dir, () => setInstalled(true))
+  const note = installing.report && installNote(installing.report, w)
+  const pick = () => {
+    setError(null)
+    chooseGameFolder(s.picker).then(
+      (chosen) => chosen && setGame(chosen),
+      (e: unknown) => setError(String(e)),
+    )
+  }
+  return (
+    <main className="tt tt-first">
+      <img src="/logo.svg" alt="" />
+      <h1>{s.welcome}</h1>
+      <p>{s.text}</p>
+      <div className="tt-first-game">
+        <Row title={game ? s.found : s.none} detail={game?.dir}>
+          <button type="button" className="tt-button quiet" onClick={pick}>
+            {s.pick}
+          </button>
+        </Row>
+      </div>
+      {running && <p className="tt-note">{w.install.closeGame}</p>}
+      {(note ?? error ?? installing.error) && <p className="tt-note bad">{note ?? error ?? installing.error}</p>}
+      {installed ? (
+        <button type="button" className="tt-button big" onClick={() => void finishSetup().then(done)}>
+          {s.finish}
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="tt-button big"
+          disabled={!game || running !== false || installing.working}
+          onClick={() => void installing.install()}
+        >
+          {installing.working ? s.working : installing.administrator ? w.install.asAdministrator : s.install}
+        </button>
+      )}
+      <i className="tt-road" />
+    </main>
+  )
+}
+

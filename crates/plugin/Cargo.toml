@@ -1,13 +1,13 @@
 [package]
 name = "westplay-plugin"
-description = "WestPlay SCS SDK plugin: takes over in-cabin screens in ETS2/ATS"
+description = "TruckersTV SCS SDK plugin: takes over in-cabin screens in ETS2/ATS"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
 
 [lib]
-name = "westplay"
+name = "truckerstv"
 crate-type = ["cdylib"]
 
 [dependencies]

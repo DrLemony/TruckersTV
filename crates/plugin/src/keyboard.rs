@@ -1,11 +1,11 @@
-//! Screen interaction: the keyboard, for typing into WestPlay.
+//! Screen interaction: the keyboard, for typing into TruckersTV.
 //!
 //! The game reads keys from its window messages, and polls some with `GetAsyncKeyState`/`GetKeyState`. While
-//! the player types into a WestPlay field (`typing`), every key but the few that stay the game's own is kept
+//! the player types into a TruckersTV field (`typing`), every key but the few that stay the game's own is kept
 //! from it: its messages are taken out of the game's message loop before it handles them (so they never
 //! become key presses or typed characters for it), and polling reports it as up. Each press goes to the app
 //! as what it types. Otherwise every key reaches the game, the interaction key held or not, so keyboard
-//! drivers can steer and brake while using the screen; but the keys bound to WestPlay (`keybinds`), while
+//! drivers can steer and brake while using the screen; but the keys bound to TruckersTV (`keybinds`), while
 //! their bindings count.
 
 use std::ffi::c_void;
@@ -116,7 +116,7 @@ unsafe extern "system" fn get_key_state(key: i32) -> i16 {
 }
 
 /// Whether the game's polling sees `key` up whatever it is: any key but its own while the player types, and a
-/// key bound to WestPlay while its binding counts (`keybinds`).
+/// key bound to TruckersTV while its binding counts (`keybinds`).
 fn hidden(key: u32) -> bool {
     (typing::typing() && !typing::stays_the_games(key)) || keybinds::taken(key)
 }
@@ -137,7 +137,7 @@ fn filter(msg: &mut MSG) {
         // SAFETY: a key message of the game's window, filtered on its own thread (`press`'s contract).
         unsafe { typing::press(key, scancode) };
     }
-    // A key bound to WestPlay: its presses aren't the game's (a release it gets is harmless).
+    // A key bound to TruckersTV: its presses aren't the game's (a release it gets is harmless).
     let bound = !typed
         && matches!(msg.message, WM_KEYDOWN | WM_SYSKEYDOWN)
         && keybinds::taken(keybinds::sided(key, msg.lParam.0));

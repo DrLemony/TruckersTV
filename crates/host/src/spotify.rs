@@ -1,18 +1,18 @@
 //! Spotify: its own web player (open.spotify.com), in a WebView of its own, hidden under the cabin page. The
-//! Spotify app the player sees is WestPlay's own (ui/src/cabin/apps/spotify); the web player plays (its audio
+//! Spotify app the player sees is TruckersTV's own (ui/src/cabin/apps/spotify); the web player plays (its audio
 //! is DRM-protected, Widevine, which WebView2 has) and answers the app's questions, from its own page: a
 //! script in it (`spotify.js`) asks Spotify's own API with the page's own session, and plays through Spotify
 //! Connect, as the page itself does.
 //!
 //! Signing in is Spotify's own page, in a window on the PC's desktop (`signin.rs`), on this WebView's profile
 //! (one of its own: signing out forgets Spotify's cookies alone). Nothing of the account passes through
-//! WestPlay: the page's session stays in the page; what comes out is what the app shows (names, covers, what
+//! TruckersTV: the page's session stays in the page; what comes out is what the app shows (names, covers, what
 //! plays), only the fields below (anything else the page might say is dropped here), and whether it's signed
 //! in. Nothing of it is kept or logged.
 //!
-//! Its sound comes from the truck's own speakers, as Apple Music's does (`cab_sound.js`, told the truck's
+//! Its sound comes from the truck's own speakers (`cab_sound.js`, told the truck's
 //! speakers, the driver's head and the camera). Its audio is protected, and plays through the page's own sound
-//! processing all the same (heard in the cab, 2026-10-17), as Apple Music's does.
+//! processing all the same (heard in the cab, 2026-10-17).
 
 use std::cell::RefCell;
 use std::path::Path;
@@ -329,7 +329,7 @@ pub struct Playback {
     /// The playing device's volume, 0 to 1 (`None`: none Spotify can set).
     #[serde(default)]
     pub volume: Option<f64>,
-    /// Playing on WestPlay's own device, not another of the account's (`None`: not known, taken as here).
+    /// Playing on TruckersTV's own device, not another of the account's (`None`: not known, taken as here).
     #[serde(default)]
     pub here: Option<bool>,
     #[serde(default)]
@@ -403,7 +403,7 @@ pub struct Spotify {
 
 /// What the host tells Spotify's page of the cab (never the cabin page's to send): the truck's speakers (`None`:
 /// as it is, a truck whose speakers aren't known), the driver's head, and the camera outside (its distance,
-/// metres; 0: not known). As Apple Music's (apple_music.rs).
+/// metres; 0: not known).
 #[derive(Debug, PartialEq, serde::Serialize)]
 #[serde(tag = "action", rename_all = "camelCase")]
 enum Cab {
@@ -507,8 +507,7 @@ impl Spotify {
 
     /// The truck's speakers (none: its sound plays as it is), the driver's head, and whether the camera is outside
     /// the cab and how far (metres; 0: not known): the page is told the speakers as they change, the head as it moves,
-    /// the camera as it goes in or out or a quarter metre further, the tone as it's set and the spectrum as it's wanted (as Apple Music's:
-    /// apple_music.rs).
+    /// the camera as it goes in or out or a quarter metre further, the tone as it's set and the spectrum as it's wanted.
     pub fn cab(
         &self,
         speakers: Option<&[Speaker]>,

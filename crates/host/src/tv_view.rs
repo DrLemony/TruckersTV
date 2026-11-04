@@ -3,7 +3,7 @@
 //!
 //! Its page is plain `http://` and its browser runs without web security, both on purpose: an Xtream server
 //! and many M3U channels are `http://` and send no CORS headers, which the cabin page (secure, `https://`)
-//! can't load. Only WestPlay's own page runs here; the rest it loads is video and text (playlists, Xtream's
+//! can't load. Only TruckersTV's own page runs here; the rest it loads is video and text (playlists, Xtream's
 //! JSON), fetched for the cabin page (`Command::Fetch`), and what it says back crosses as data.
 //!
 //! The PC videos (the folder chosen in the companion, `settings::TvSettings`) are served to it at
@@ -57,6 +57,10 @@ pub enum Command {
     Videos,
     /// The PC clipboard's text, for a link field's paste button: answered with `tvPasted`.
     Paste,
+    /// The X over the full screen picture, shown or gone: the page under the picture can't draw it.
+    Exit {
+        shown: bool,
+    },
 }
 
 /// A PC video: its name and where the player loads it.
@@ -69,6 +73,9 @@ pub struct Video {
 pub struct Tv {
     pub view: OffscreenWebView,
     area: Option<(f32, f32, u32, u32)>,
+    /// Its page is running: until then what's posted would be lost, and it waits in `waiting`.
+    ready: bool,
+    waiting: Vec<serde_json::Value>,
 }
 
 impl Tv {
@@ -84,7 +91,7 @@ impl Tv {
         }
         stage.add(&view, true)?;
         view.show(false)?;
-        Ok(Self { view, area: None })
+        Ok(Self { view, area: None, ready: false, waiting: Vec::new() })
     }
 
     pub fn command(&mut self, command: Command, stage: &Stage, videos: Option<&str>) -> Result<Option<String>, Error> {
@@ -117,6 +124,7 @@ impl Tv {
             Command::Pause => self.post(&serde_json::json!({ "action": "pause" }))?,
             Command::Resume => self.post(&serde_json::json!({ "action": "resume" }))?,
             Command::Stop => self.post(&serde_json::json!({ "action": "stop" }))?,
+            Command::Exit { shown } => self.post(&serde_json::json!({ "action": "exit", "shown": shown }))?,
             Command::Volume { share } if share.is_finite() => {
                 self.post(&serde_json::json!({ "action": "volume", "share": share.clamp(0.0, 1.0) }))?;
             }
@@ -145,14 +153,25 @@ impl Tv {
         Ok(None)
     }
 
-    fn post(&self, message: &serde_json::Value) -> windows::core::Result<()> {
+    fn post(&mut self, message: &serde_json::Value) -> windows::core::Result<()> {
+        if !self.ready {
+            self.waiting.push(message.clone());
+            return Ok(());
+        }
         self.view.post_json(&message.to_string())
     }
 
     /// What the player's page said since last asked, for the cabin page: its playing (`tvState`) and what it
     /// fetched (`tvFetched`). Anything else it posts is dropped.
-    pub fn take_messages(&self) -> Vec<String> {
-        self.view.take_page_messages().into_iter().filter_map(|message| relayed(&message)).collect()
+    pub fn take_messages(&mut self) -> Vec<String> {
+        let messages = self.view.take_page_messages();
+        if !self.ready && messages.iter().any(|message| says_ready(message)) {
+            self.ready = true;
+            for message in std::mem::take(&mut self.waiting) {
+                let _ = self.view.post_json(&message.to_string());
+            }
+        }
+        messages.iter().filter_map(|message| relayed(message)).collect()
     }
 }
 
@@ -165,6 +184,11 @@ pub enum TvPage {
 /// An `http`/`https` address: all the player loads.
 fn web_address(url: &str) -> bool {
     url::Url::parse(url).is_ok_and(|url| matches!(url.scheme(), "http" | "https"))
+}
+
+/// Whether the player page's message says it's running.
+fn says_ready(message: &str) -> bool {
+    serde_json::from_str::<serde_json::Value>(message).is_ok_and(|value| value["type"] == "ready")
 }
 
 /// The player page's message, checked and passed on to the cabin page: its state (three flags) or a fetch's
@@ -244,6 +268,13 @@ mod tests {
         assert!(web_address("https://iptv-org.github.io/iptv/countries/tr.m3u"));
         assert!(!web_address("file:///C:/Windows/win.ini"));
         assert!(!web_address("javascript:alert(1)"));
+    }
+
+    #[test]
+    fn hears_the_page_say_its_running() {
+        assert!(says_ready(r#"{"type":"ready"}"#));
+        assert!(!says_ready(r#"{"type":"state"}"#));
+        assert!(!says_ready("not json"));
     }
 
     #[test]
