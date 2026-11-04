@@ -27,7 +27,7 @@ pub fn bridge_name() -> String {
     format!("Local\\TruckersTV.Bridge.v{BRIDGE_VERSION}")
 }
 pub const BRIDGE_MAGIC: u32 = u32::from_le_bytes(*b"WPB7");
-pub const BRIDGE_VERSION: u32 = 25;
+pub const BRIDGE_VERSION: u32 = 26;
 
 /// Size of the app's frames, and the base size of the screen textures in the mod (`westplay_setup::game_mod`
 /// builds them from these).
@@ -73,6 +73,15 @@ pub fn screen_layout_for_texture(width: u32, height: u32) -> Option<usize> {
     let index = height.checked_sub(SCREEN_HEIGHT + FIRST_TEXTURE_ROW)? as usize;
     (width == SCREEN_WIDTH && index < screen_layouts().len()).then_some(index)
 }
+
+/// The cab TV's model as the game keeps it (crates/setup cab_tv.rs, the plugin's test_tv.rs): each vertex's size, how
+/// many its panel and its glass have, and the texture coordinates of every panel vertex (the bezel's black patch).
+pub const TV_VERTEX_SIZE: usize = 36;
+pub const TV_PANEL_VERTICES: usize = 48;
+pub const TV_GLASS_VERTICES: usize = 4;
+pub const TV_BEZEL_UV: [f32; 2] = [0.125, 0.375];
+/// The first byte of the colour of the test TV's glass, telling it from the other TVs': too near theirs (0x80) to see.
+pub const TEST_TV_MARK: u8 = 0x81;
 
 /// The cab's mark: a fully transparent texture the mod adds to the dashboard scripts of the trucks the TV goes in.
 /// The game draws a dashboard's script every frame the camera is in the cab, wherever the player looks, and never
@@ -265,6 +274,11 @@ pub struct HostBlock {
     pub interaction_toggle: AtomicU32,
     /// Each [`Keybind`]'s key ([`keybind_value`]): 0 until the app has set them, meaning none.
     pub keybinds: [AtomicU32; KEYBIND_COUNT],
+    /// How many times the player has moved the test TV (0: not since the app started), counted after
+    /// [`test_tv_glass`](Self::test_tv_glass) is written, and where it's to be: its glass's middle and half width,
+    /// `f32` bits, on its model's axes.
+    pub test_tv_moves: AtomicU32,
+    pub test_tv_glass: [AtomicU32; 4],
 }
 
 /// What TruckersTV does from the game by a key of the player's choosing (the app's settings).

@@ -425,3 +425,7 @@ body,
   margin: 10px 0 14px;
   text-align: left;
 }
+
+.tt-page > .tt-button {
+  margin-top: 14px;
+}

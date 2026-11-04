@@ -1,6 +1,6 @@
 /** The window's words, in Turkish and English: the game's language, or Windows' before it ever ran. */
 const TR = {
-  nav: { status: 'Durum', keys: 'Tuşlar', accounts: 'Hesaplar', install: 'Kurulum' },
+  nav: { status: 'Durum', keys: 'Tuşlar', accounts: 'Hesaplar', testTv: 'Test TV', install: 'Kurulum' },
   state: {
     starting: ['Başlıyor', 'Motor hazırlanıyor.'],
     stopped: ['Durdu', 'Bir sorun çıktı. Aşağıdaki hataya bak.'],
@@ -47,6 +47,18 @@ const TR = {
     signInAgain: 'Yeniden giriş yap',
     signOut: 'Çıkış yap',
   },
+  testTv: {
+    title: 'Test TV',
+    sub: 'Mağazadaki Yatak oyuncakları bölümünden TruckersTV TV Test’i al. Oyun açıkken kaydırdıkça TV kabinde kayar, kalıcı olması için Uygula’ya bas.',
+    width: 'Boyut',
+    z: 'Öne / arkaya',
+    y: 'Aşağı / yukarı',
+    x: 'Sola / sağa',
+    apply: 'Uygula',
+    applying: 'Uygulanıyor…',
+    made: 'Kaydedildi. Oyunu açınca TV burada olacak.',
+    waiting: 'Kaydedildi. Oyunu kapatınca kalıcı olur.',
+  },
   install: {
     title: 'Kurulum',
     sub: 'Oyunla olan bağlantı.',
@@ -88,7 +100,7 @@ const TR = {
 }
 
 const EN: typeof TR = {
-  nav: { status: 'Status', keys: 'Keys', accounts: 'Accounts', install: 'Install' },
+  nav: { status: 'Status', keys: 'Keys', accounts: 'Accounts', testTv: 'Test TV', install: 'Install' },
   state: {
     starting: ['Starting', 'The engine is getting ready.'],
     stopped: ['Stopped', 'Something went wrong: see the error below.'],
@@ -134,6 +146,18 @@ const EN: typeof TR = {
     signIn: 'Sign in',
     signInAgain: 'Sign in again',
     signOut: 'Sign out',
+  },
+  testTv: {
+    title: 'Test TV',
+    sub: 'Buy the TruckersTV TV Test under Bed toys in the shop. With the game running it moves as you slide; press Apply to keep it.',
+    width: 'Size',
+    z: 'Forward / back',
+    y: 'Down / up',
+    x: 'Left / right',
+    apply: 'Apply',
+    applying: 'Applying…',
+    made: 'Saved. The TV will be here when you start the game.',
+    waiting: 'Saved. It stays once the game is closed.',
   },
   install: {
     title: 'Install',

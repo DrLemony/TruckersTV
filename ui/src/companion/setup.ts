@@ -25,6 +25,18 @@ export interface SetupState {
   /** The onboarding's language, a game language code (`tr_tr`): the game's own (or one set to try it out,
    * `WESTPLAY_LANGUAGE`); `null` before the game was ever started: then Windows'. */
   language: string | null
+  testTv: TestTv
+}
+
+/** The test TV's size and place, in metres. Mirrors the app's `cab_tv::TestTv`. */
+export interface TestTv {
+  /** Toward the co-driver's side. */
+  x: number
+  /** Up. */
+  y: number
+  /** Toward the back of the cab. */
+  z: number
+  width: number
 }
 
 /** What a check of the game found. Mirrors the app's `setup::GameCheck`. */
@@ -56,6 +68,10 @@ export const checkGame = (dir: string) => call<GameCheck>('check_game', { dir })
 export const installIntoGame = (dir: string, administrator: boolean) =>
   call<InstallReport>('install_into_game', { dir, administrator })
 export const finishSetup = () => call<void>('finish_setup')
+/** Moves the test TV in the running game, until it's kept (`setTestTv`). */
+export const moveTestTv = (test: TestTv) => call<void>('move_test_tv', { test })
+/** Keeps the test TV's size and place; `false`: the game is running, and they go in once it's closed. */
+export const setTestTv = (test: TestTv) => call<boolean>('set_test_tv', { test })
 
 /** What taking TruckersTV out of the game did. Mirrors the app's `setup::UninstallReport`; its `plugin` is
  * `installed` once the plugin is gone (the install's outcomes, the other way round). */

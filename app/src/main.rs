@@ -101,6 +101,12 @@ fn get_settings(store: State<SettingsStore>) -> Settings {
     store.shared.get()
 }
 
+/// Moves the test TV in the running game, as the player slides it (kept by `setup::set_test_tv`).
+#[tauri::command]
+fn move_test_tv(test: westplay_setup::cab_tv::TestTv, accounts: State<Accounts>) {
+    *accounts.0.test_tv.lock().unwrap_or_else(|e| e.into_inner()) = Some(test.glass());
+}
+
 /// Saves new settings and applies them. Values are corrected on the way in (see `westplay_host::settings`);
 /// the settings as saved are returned and announced to every window (`settings-changed`).
 #[tauri::command]
@@ -147,6 +153,8 @@ fn main() {
             setup::check_game,
             setup::install_into_game,
             setup::finish_setup,
+            setup::set_test_tv,
+            move_test_tv,
             setup::uninstall_from_game,
             setup::remove_data,
             setup::leave_pc

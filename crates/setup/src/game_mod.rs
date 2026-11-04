@@ -18,6 +18,7 @@ use westplay_mapdata::files::{GameFiles, Mount};
 use westplay_shared::{CAB_MARK_HEIGHT, CAB_MARK_WIDTH, SCREEN_WIDTH, ScreenLayout, screen_layouts};
 
 use crate::cab_mark;
+use crate::cab_tv::TestTv;
 
 /// The mod's file, in TruckersTV's own folder (`places::westplay_documents`).
 pub const FILE_NAME: &str = "truckerstv.scs";
@@ -28,12 +29,13 @@ const SCREEN_LAYER: u32 = 100;
 
 /// Whether the mod built at `built` has the cab TV as it would be made now from `game` (`cab_tv::current`): placed
 /// as now, in the trucks the game has.
-pub fn cab_tv_current(game: &GameFiles, built: &Path) -> bool {
+pub fn cab_tv_current(game: &GameFiles, built: &Path, test: TestTv) -> bool {
     let Ok(archive) = Archive::open(built) else { return false };
     let ours = GameFiles::new(vec![Mount::Archive(archive)]);
     let index = westplay_shared::cab_tv_layout();
     let texture = texture_name(&screen_layouts()[index]);
-    crate::cab_tv::current(game, &ours, &format!("/{SCREEN_DIR}/{texture}.tobj"), ScreenLayout::texture_height(index))
+    let height = ScreenLayout::texture_height(index);
+    crate::cab_tv::current(game, &ours, &format!("/{SCREEN_DIR}/{texture}.tobj"), height, test)
 }
 
 /// What a build made: why the TV is left out, if it is (no truck it goes in), and how many dashboard scripts have the
@@ -44,8 +46,9 @@ pub struct Built {
     pub cab_marks: usize,
 }
 
-/// The mod for `game`: the cab TV and its screen texture, and the cab's mark in `cab_marks`' scripts.
-pub fn build(game: &GameFiles, cab_marks: &cab_mark::Marks) -> (Vec<u8>, Built) {
+/// The mod for `game`: the cab TV (`test` the test TV's size and place) and its screen texture, and the cab's mark in
+/// `cab_marks`' scripts.
+pub fn build(game: &GameFiles, cab_marks: &cab_mark::Marks, test: TestTv) -> (Vec<u8>, Built) {
     let mut files: Vec<(String, Vec<u8>)> = vec![
         ("manifest.sii".into(), manifest().into_bytes()),
         ("description.txt".into(), b"TruckersTV cab TV. Requires the TruckersTV app and plugin.\n".to_vec()),
@@ -57,7 +60,7 @@ pub fn build(game: &GameFiles, cab_marks: &cab_mark::Marks) -> (Vec<u8>, Built) 
     files.push((format!("{SCREEN_DIR}/{texture}.mat"), material(&texture).into_bytes()));
     files.push((format!("{SCREEN_DIR}/{texture}.tobj"), tobj(&format!("/{SCREEN_DIR}/{texture}.dds"))));
     files.push((format!("{SCREEN_DIR}/{texture}.dds"), transparent_dds(SCREEN_WIDTH, height)));
-    match crate::cab_tv::files(game, &format!("/{SCREEN_DIR}/{texture}.tobj"), height) {
+    match crate::cab_tv::files(game, &format!("/{SCREEN_DIR}/{texture}.tobj"), height, test) {
         Ok(tv) => files.extend(tv),
         Err(why) => built.no_tv = Some(why),
     }
@@ -380,7 +383,7 @@ mod tests {
     fn builds_the_mod_from_the_installed_game() {
         let game = crate::game::find().into_iter().next().expect("the game installed");
         let files = GameFiles::install(&game.dir).unwrap();
-        let (bytes, built) = build(&files, &cab_mark::Marks::default());
+        let (bytes, built) = build(&files, &cab_mark::Marks::default(), TestTv::default());
         let out = std::env::temp_dir().join(FILE_NAME);
         std::fs::write(&out, &bytes).unwrap();
         println!("{} bytes, no TV: {:?}: {}", bytes.len(), built.no_tv, out.display());

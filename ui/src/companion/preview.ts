@@ -25,6 +25,7 @@ const setup: SetupState = {
   found: [GAME],
   gameRunning: false,
   language: query.get('language'),
+  testTv: { x: 1.751, y: 0.662, z: -0.09, width: 0.54 },
 }
 
 const check: GameCheck = { plugin: 'current' }
@@ -80,6 +81,9 @@ export async function answer(command: string, args?: Record<string, unknown>): P
       setup.finished = true
       setup.game = GAME
       return null
+    case 'set_test_tv':
+      setup.testTv = args?.test as SetupState['testTv']
+      return gameState === 'off'
     case 'key_name':
       return `Key ${String(args?.key)}`
     default:

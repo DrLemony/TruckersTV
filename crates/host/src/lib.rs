@@ -94,13 +94,15 @@ pub struct Status {
 }
 
 /// The companion window's requests to sign YouTube Music or Spotify in or out (or to know whether it
-/// is), from any thread, for the host to carry out as the cab's apps would.
+/// is), from any thread, for the host to carry out as the cab's apps would; and to move the test TV.
 #[derive(Debug, Default)]
 pub struct AccountRequests {
     pub youtube_music: AccountRequest,
     pub spotify: AccountRequest,
     /// A site app to sign in to, by its id.
     pub site: std::sync::Mutex<Option<String>>,
+    /// Where the test TV is to be (the bridge's `test_tv_glass`), the latest not passed on yet.
+    pub test_tv: std::sync::Mutex<Option<[f32; 4]>>,
 }
 
 /// One service's request, the latest not carried out yet.
@@ -470,6 +472,12 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
                 slot.store(value, Ordering::Release);
             }
             let _ = webview.post_json(&settings_message(&config.settings.get()));
+        }
+        if let Some(glass) = config.accounts.test_tv.lock().unwrap_or_else(|e| e.into_inner()).take() {
+            for (slot, value) in host.test_tv_glass.iter().zip(glass) {
+                slot.store(value.to_bits(), Ordering::Relaxed);
+            }
+            host.test_tv_moves.fetch_add(1, Ordering::Release);
         }
         let mouse = pointer.update(&bridge.bridge().plugin.pointer, &webview, site_browser.as_mut());
         cursor.follow(mouse, Instant::now());

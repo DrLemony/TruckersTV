@@ -25,7 +25,7 @@ Get the installer from the [latest release](https://github.com/DrLemony/Truckers
 
 ## What it is
 
-TruckersTV is a Windows app and a game plugin. The TV is bought in the game's own truck shop, under *Bed toys*, as "TruckersTV TV" (1500 €) or the bigger "TruckersTV TV XL" (3000 €) and "TruckersTV TV XXL" (4500 €). It is drawn into the cab, and the truck's own screens stay the game's. There's no mod to install by hand, so it also runs under TruckersMP.
+TruckersTV is a Windows app and a game plugin. The TV is bought in the game's own truck shop, under *Bed toys*, as "TruckersTV TV" (1500 €) or the bigger "TruckersTV TV XL" (3000 €) and "TruckersTV TV XXL" (4500 €). "TruckersTV TV Test" (100 €) can be resized and moved around the cab from the TruckersTV window, live while the game runs. It is drawn into the cab, and the truck's own screens stay the game's. There's no mod to install by hand, so it also runs under TruckersMP.
 
 For now the TV is placed in the Iveco S-Way, over the right door.
 
@@ -52,7 +52,7 @@ The companion app on the PC shows the TV's state, its keys and your accounts:
 
 TruckersTV, Euro Truck Simulator 2'de tırın kabinine televizyon koyar: YouTube, müzik, canlı TV, tarayıcı ve kendi videoların, Android TV tarzı bir ana ekranla. Şu an beta ve yalnızca Iveco S-Way'de çalışıyor; TruckersMP ile uyumlu.
 
-[Son sürümden](https://github.com/DrLemony/TruckersTV/releases) kurulum dosyasını indir ve çalıştır, sonra oyundan önce TruckersTV'yi aç. Televizyonu oyunda tır galerisinden, *Yatak Eşyaları* altından satın alırsın. Windows uyarı verirse *Ek bilgi*, ardından *Yine de çalıştır*'a bas.
+[Son sürümden](https://github.com/DrLemony/TruckersTV/releases) kurulum dosyasını indir ve çalıştır, sonra oyundan önce TruckersTV'yi aç. Televizyonu oyunda tır galerisinden, *Yatak Eşyaları* altından satın alırsın. *TruckersTV TV Test*'in boyutunu ve yerini oyun açıkken TruckersTV penceresinden değiştirebilirsin. Windows uyarı verirse *Ek bilgi*, ardından *Yine de çalıştır*'a bas.
 
 ## Building
 

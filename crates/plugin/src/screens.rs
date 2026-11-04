@@ -193,6 +193,9 @@ pub unsafe fn on_set_shader_resources(context: *mut c_void, count: u32, views: *
         let views = std::slice::from_raw_parts(views, count as usize);
         if VIEW_ADDRESSES.iter().any(|address| address.load(Ordering::Relaxed) != 0) {
             refresh_kept(context, views);
+            if views.iter().any(|view| is_kept(*view)) {
+                crate::test_tv::screen_bound(context);
+            }
         }
         if !CURRENT_IS_CANDIDATE.load(Ordering::Relaxed) {
             return;

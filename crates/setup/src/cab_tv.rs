@@ -11,7 +11,7 @@
 
 use westplay_mapdata::buildings;
 use westplay_mapdata::files::GameFiles;
-use westplay_shared::SCREEN_HEIGHT;
+use westplay_shared::{SCREEN_HEIGHT, TEST_TV_MARK, TV_BEZEL_UV, TV_PANEL_VERTICES, TV_VERTEX_SIZE};
 
 use crate::model::{self, Block, Piece};
 
@@ -101,14 +101,60 @@ const TRUCKS: &[Truck] = &[Truck {
     ],
 }];
 
+/// The test TV (owner 2026-11-04): sold beside the others, its size and place the player's, from the companion. Metres,
+/// a [`Tv`]'s axes: the wall behind it (`x`), its middle (`y`, `z`), its width (its height follows). It always faces
+/// -x, as the others do. The game reads the model as it starts; with it running the plugin moves it where it's told
+/// ([`TestTv::glass`], the plugin's test_tv.rs), its bezel growing with it, until the next start makes it exact.
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct TestTv {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub width: f32,
+}
+
+const TEST_UNIT: &str = "wp_tv_test";
+/// The test TV's bounds, whatever its place (the cab's axes): all the cab, for the game to draw it wherever the player
+/// has moved it to.
+const TEST_REACH: [[f32; 3]; 2] = [[-2.6, -1.6, -2.0], [2.6, 2.0, 2.0]];
+
+/// Where it starts: where the small TV is.
+impl Default for TestTv {
+    fn default() -> Self {
+        Self { x: 1.751, y: 0.662, z: -0.09, width: 0.54 }
+    }
+}
+
+impl TestTv {
+    /// Where its glass is to be in the S-Way, for the plugin: its middle and half width, on its model's axes.
+    pub fn glass(self) -> [f32; 4] {
+        let (tv, hookup) = (self.tv(), TRUCKS[0].hookup);
+        let [y, z] = tv.middle;
+        let front = tv.wall - STAND_OFF - DEPTH - GLASS_AHEAD;
+        [front - hookup[0], y - hookup[1], z - hookup[2], (tv.width - 2.0 * BEZEL) / 2.0]
+    }
+
+    /// As a TV in the shop, kept to the companion's sliders: within the cab, and no smaller than its bracket.
+    fn tv(self) -> Tv {
+        Tv {
+            unit: TEST_UNIT,
+            file: "westplay_tv_test",
+            name: "TruckersTV TV Test",
+            price: 100,
+            wall: self.x.clamp(-1.76, 1.76),
+            middle: [self.y.clamp(-0.6, 1.0), self.z.clamp(-1.0, 1.0)],
+            width: self.width.clamp(0.3, 1.6),
+        }
+    }
+}
+
 /// The panel's depth, its bezel's width, how far its bracket holds it off the wall, and how far in front of the
 /// panel's face the glass is (no fighting over which shows). Metres.
 const DEPTH: f32 = 0.03;
 const BEZEL: f32 = 0.012;
 const STAND_OFF: f32 = 0.016;
 const GLASS_AHEAD: f32 = 0.0008;
-/// The bezel's look: the source model's colour texture's black patch (its glass's border).
-const BLACK: [f32; 2] = [0.125, 0.375];
 
 /// The trucks the TV goes in, by their folders in the game.
 pub fn trucks() -> impl Iterator<Item = &'static str> {
@@ -117,8 +163,13 @@ pub fn trucks() -> impl Iterator<Item = &'static str> {
 
 /// The TV's files for the trucks `game` has (none: `Err`, nothing to make): its model per truck, its materials and
 /// texture, its icon, and each truck's accessory. `screen_texture` is the `cab-tv` layout's texture object (a game
-/// path), `texture_height` its texture's height.
-pub fn files(game: &GameFiles, screen_texture: &str, texture_height: u32) -> Result<Vec<(String, Vec<u8>)>, String> {
+/// path), `texture_height` its texture's height, `test` the test TV's size and place.
+pub fn files(
+    game: &GameFiles,
+    screen_texture: &str,
+    texture_height: u32,
+    test: TestTv,
+) -> Result<Vec<(String, Vec<u8>)>, String> {
     let trucks: Vec<&Truck> = TRUCKS
         .iter()
         .filter(|truck| {
@@ -138,8 +189,9 @@ pub fn files(game: &GameFiles, screen_texture: &str, texture_height: u32) -> Res
         (format!("{ICON_DIR}/{NAME}.tobj"), crate::game_mod::tobj(&format!("/{ICON_DIR}/{NAME}.dds"))),
         (format!("{ICON_DIR}/{NAME}.dds"), model::icon()?),
     ];
+    let test = test.tv();
     for truck in trucks {
-        for tv in truck.tvs {
+        for tv in truck.tvs.iter().chain([&test]) {
             let model = model_name(truck, tv);
             files.push((format!("{DIR}/{model}.pmg"), self::model(truck, tv, texture_height)?));
             files.push((format!("{DIR}/{model}.pmd"), model::descriptor_in(DIR)?));
@@ -180,16 +232,17 @@ fn blank_piece(pmg: &mut [u8], piece: usize) -> Option<()> {
 
 /// Whether the mod built at `built` (its files, mounted) has the TV as [`files`] would make it now for `game`: the
 /// same trucks, each model as placed now.
-pub fn current(game: &GameFiles, built: &GameFiles, screen_texture: &str, texture_height: u32) -> bool {
-    let wanted = files(game, screen_texture, texture_height).unwrap_or_default();
+pub fn current(game: &GameFiles, built: &GameFiles, screen_texture: &str, texture_height: u32, test: TestTv) -> bool {
+    let wanted = files(game, screen_texture, texture_height, test).unwrap_or_default();
     let has_all = wanted
         .iter()
         .filter(|(path, _)| path.ends_with(".pmg") || path.starts_with("def/"))
         .all(|(path, bytes)| built.read(path).ok().flatten().is_some_and(|found| found == *bytes));
     // A truck the TV went in that the game no longer has (its DLC gone): made again without it.
+    let test = test.tv();
     let none_more = TRUCKS
         .iter()
-        .flat_map(|truck| truck.tvs.iter().map(|tv| definition_path(truck, tv)))
+        .flat_map(|truck| truck.tvs.iter().chain([&test]).map(|tv| definition_path(truck, tv)))
         .filter(|definition| !wanted.iter().any(|(path, _)| path == definition))
         .all(|definition| built.read(&definition).ok().flatten().is_none());
     has_all && none_more
@@ -233,25 +286,34 @@ fn model(truck: &Truck, tv: &Tv, texture_height: u32) -> Result<Vec<u8>, String>
     ];
     let mut look = Vec::with_capacity(12);
     look.extend([128, 128, 128, 255]);
-    look.extend(BLACK[0].to_le_bytes());
-    look.extend(BLACK[1].to_le_bytes());
+    // The bezel's look: the source model's colour texture's black patch (its glass's border).
+    look.extend(TV_BEZEL_UV[0].to_le_bytes());
+    look.extend(TV_BEZEL_UV[1].to_le_bytes());
     let body = model::source_piece(model::BODY)?;
     let panel = model::blocks_looking(&body, &boxes, |p| p, &look)?;
+    if panel.vertices.len() != TV_PANEL_VERTICES * TV_VERTEX_SIZE {
+        return Err("the panel isn't as the plugin finds it".into());
+    }
+    let test = tv.unit == TEST_UNIT;
     let glass = glass(
         from_hookup([front - GLASS_AHEAD, y, z]),
         glass_width / 2.0,
         (height - 2.0 * BEZEL) / 2.0,
         SCREEN_HEIGHT as f32 / texture_height as f32,
+        test,
     )?;
-    model::assemble(vec![panel, glass])
+    model::assemble(vec![panel, glass], test.then(|| TEST_REACH.map(from_hookup)))
 }
 
 /// The glass: a quad about `middle` facing -x, `half_width` along z and `half_height` along y, of the screen's
 /// material; its texture coordinates across the frame, `frame_bottom` the frame's last row's (the texture's rows
-/// past it, which tell the layouts apart, not shown).
-fn glass(middle: [f32; 3], half_width: f32, half_height: f32, frame_bottom: f32) -> Result<Piece, String> {
+/// past it, which tell the layouts apart, not shown); `marked`, the test TV's ([`TEST_TV_MARK`]).
+fn glass(middle: [f32; 3], half_width: f32, half_height: f32, frame_bottom: f32, marked: bool) -> Result<Piece, String> {
     let source = model::source_piece(model::SCREEN)?;
-    let colour = source.vertices.get(24..28).ok_or("the source glass has no vertex")?.to_vec();
+    let mut colour = source.vertices.get(24..28).ok_or("the source glass has no vertex")?.to_vec();
+    if marked {
+        colour[0] = TEST_TV_MARK;
+    }
     // Across the face: `a` (+z) then `b` (+y), `a` x `b` the face's normal (-x), as the panel's boxes' faces are.
     let normal = [-1.0f32, 0.0, 0.0];
     let mut vertices = Vec::new();
@@ -303,6 +365,44 @@ mod tests {
         assert!(least(0) > 1.69);
         assert!(least(2) >= -0.36 - 1e-4 && most(2) <= 0.18 + 1e-4, "{} {}", least(2), most(2));
         assert!(least(1) > 0.45 && most(1) < 0.88, "{} {}", least(1), most(1));
+    }
+
+    #[test]
+    fn the_test_tv_goes_where_it_is_told_keeping_its_shape() {
+        let truck = &TRUCKS[0];
+        let size = |test: TestTv| {
+            let points: Vec<[f32; 3]> = in_cab(truck, &test.tv()).into_iter().flatten().collect();
+            let least = |k: usize| points.iter().map(|p| p[k]).fold(f32::MAX, f32::min);
+            let most = |k: usize| points.iter().map(|p| p[k]).fold(f32::MIN, f32::max);
+            (most(0), (least(1) + most(1)) / 2.0, (least(2) + most(2)) / 2.0, most(2) - least(2), most(1) - least(1))
+        };
+        let (back, y, z, width, height) = size(TestTv { x: 1.2, y: 0.3, z: 0.1, width: 1.0 });
+        assert!((back - 1.2).abs() < 1e-4 && (y - 0.3).abs() < 1e-4 && (z - 0.1).abs() < 1e-4);
+        assert!((width - 1.0).abs() < 1e-4);
+        // Its glass 16:9 at any size.
+        assert!(((width - 2.0 * BEZEL) / (height - 2.0 * BEZEL) - 16.0 / 9.0).abs() < 1e-3);
+        // By default, the small TV's place; asked for too much, the most there is.
+        let small = &truck.tvs[0];
+        let tv = TestTv::default().tv();
+        assert_eq!((tv.wall, tv.middle, tv.width), (small.wall, small.middle, small.width));
+        let tv = TestTv { x: 9.0, y: -9.0, z: 9.0, width: 0.0 }.tv();
+        assert_eq!((tv.wall, tv.middle, tv.width), (1.76, [-0.6, 1.0], 0.3));
+        assert!(tv.unit.len() <= 12);
+    }
+
+    #[test]
+    fn the_plugin_is_told_where_the_model_has_the_test_tv_s_glass() {
+        let truck = &TRUCKS[0];
+        let test = TestTv { x: 1.2, y: 0.3, z: 0.1, width: 1.0 };
+        let pmg = model(truck, &test.tv(), HEIGHT).unwrap();
+        let triangles = buildings::model_triangles(&pmg).unwrap();
+        let corners: Vec<[f32; 3]> = triangles[triangles.len() - 2..].iter().flatten().copied().collect();
+        let least = |k: usize| corners.iter().map(|p| p[k]).fold(f32::MAX, f32::min);
+        let most = |k: usize| corners.iter().map(|p| p[k]).fold(f32::MIN, f32::max);
+        let [x, y, z, half] = test.glass();
+        assert!((least(0) - x).abs() < 1e-5 && (most(0) - x).abs() < 1e-5);
+        assert!(((least(1) + most(1)) / 2.0 - y).abs() < 1e-5 && ((least(2) + most(2)) / 2.0 - z).abs() < 1e-5);
+        assert!(((most(2) - least(2)) / 2.0 - half).abs() < 1e-5);
     }
 
     #[test]
@@ -390,18 +490,20 @@ mod tests {
         std::fs::create_dir_all(&accessory).unwrap();
         std::fs::write(accessory.join("x.sii"), "").unwrap();
         let game = GameFiles::new(vec![westplay_mapdata::files::Mount::Folder(root.clone())]);
-        let made = files(&game, "/s.tobj", HEIGHT).unwrap();
+        let test = TestTv::default();
+        let made = files(&game, "/s.tobj", HEIGHT, test).unwrap();
         let defs: Vec<&String> = made.iter().map(|(path, _)| path).filter(|path| path.starts_with("def/")).collect();
         assert_eq!(
             defs,
             [
                 "def/vehicle/truck/iveco.sway/accessory/toybed/westplay_tv.sii",
                 "def/vehicle/truck/iveco.sway/accessory/toybed/westplay_tv_xl.sii",
-                "def/vehicle/truck/iveco.sway/accessory/toybed/westplay_tv_xxl.sii"
+                "def/vehicle/truck/iveco.sway/accessory/toybed/westplay_tv_xxl.sii",
+                "def/vehicle/truck/iveco.sway/accessory/toybed/westplay_tv_test.sii"
             ]
         );
         let empty = GameFiles::new(Vec::new());
-        assert!(files(&empty, "/s.tobj", HEIGHT).is_err());
+        assert!(files(&empty, "/s.tobj", HEIGHT, test).is_err());
         // Built with it, current; for a game without the truck, not (the TV to be taken out).
         let built_dir = root.join("built");
         for (path, bytes) in &made {
@@ -410,9 +512,11 @@ mod tests {
             std::fs::write(at, bytes).unwrap();
         }
         let built = GameFiles::new(vec![westplay_mapdata::files::Mount::Folder(built_dir)]);
-        assert!(current(&game, &built, "/s.tobj", HEIGHT));
-        assert!(!current(&empty, &built, "/s.tobj", HEIGHT));
-        assert!(current(&empty, &empty, "/s.tobj", HEIGHT));
+        assert!(current(&game, &built, "/s.tobj", HEIGHT, test));
+        assert!(!current(&empty, &built, "/s.tobj", HEIGHT, test));
+        assert!(current(&empty, &empty, "/s.tobj", HEIGHT, test));
+        // The test TV moved: made again.
+        assert!(!current(&game, &built, "/s.tobj", HEIGHT, TestTv { y: 0.1, ..test }));
         let _ = std::fs::remove_dir_all(&root);
     }
 }

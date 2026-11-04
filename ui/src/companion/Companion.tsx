@@ -15,9 +15,12 @@ import {
   type InstallReport,
   installIntoGame,
   leavePc,
+  moveTestTv,
   removeData,
   type SetupState,
+  setTestTv,
   setupState,
+  type TestTv,
   uninstallFromGame,
 } from './setup'
 import {
@@ -32,7 +35,7 @@ import {
 import { type Binding, DEFAULT_KEY, KEYBIND_IDS, type KeybindId, SENSITIVITY, useSettings } from './useSettings'
 import { type Words, wordsFor } from './words'
 
-const PAGES = ['status', 'keys', 'accounts', 'install'] as const
+const PAGES = ['status', 'keys', 'accounts', 'testTv', 'install'] as const
 type Page = (typeof PAGES)[number]
 
 /** The window: its first-run setup, then the pages down its left side. */
@@ -101,6 +104,7 @@ function Main({
         {page === 'status' && <StatusPage status={status} w={w} />}
         {page === 'keys' && <KeysPage w={w} />}
         {page === 'accounts' && <AccountsPage status={status} w={w} />}
+        {page === 'testTv' && <TestTvPage setup={setup} w={w} refresh={refresh} />}
         {page === 'install' && <InstallPage setup={setup} w={w} refresh={refresh} />}
       </section>
     </main>
@@ -437,6 +441,64 @@ function useInstall(dir: string | undefined, installed: () => void) {
     }
   }
   return { working, report, error, administrator, install }
+}
+
+/** The test TV's sliders, in metres, as the app keeps them (`TestTv::tv`). */
+const TEST_TV_SLIDERS = [
+  { id: 'width', min: 0.3, max: 1.6 },
+  { id: 'z', min: -1, max: 1 },
+  { id: 'y', min: -0.6, max: 1 },
+  { id: 'x', min: -1.76, max: 1.76 },
+] as const
+
+/** The test TV's size and place: it follows the sliders in the running game, and they're kept once applied. */
+function TestTvPage({ setup, w, refresh }: { setup: SetupState; w: Words; refresh(): void }) {
+  const t = w.testTv
+  const [test, setTest] = useState<TestTv>(setup.testTv)
+  const [applying, setApplying] = useState(false)
+  const [result, setResult] = useState<{ note: string; bad?: boolean } | null>(null)
+  const slide = (next: TestTv) => {
+    setTest(next)
+    setResult(null)
+    void moveTestTv(next).catch(() => {})
+  }
+  const apply = () => {
+    setApplying(true)
+    setResult(null)
+    setTestTv(test)
+      .then(
+        (made) => setResult({ note: made ? t.made : t.waiting }),
+        (e: unknown) => setResult({ note: String(e), bad: true }),
+      )
+      .finally(() => {
+        setApplying(false)
+        refresh()
+      })
+  }
+  return (
+    <>
+      <Heading title={t.title} sub={t.sub} />
+      {TEST_TV_SLIDERS.map(({ id, min, max }) => (
+        <Row key={id} title={t[id]}>
+          <span className="tt-value">{`${Math.round(test[id] * 100)} cm`}</span>
+          <input
+            type="range"
+            className="tt-range"
+            aria-label={t[id]}
+            min={min}
+            max={max}
+            step={0.01}
+            value={test[id]}
+            onChange={(event) => slide({ ...test, [id]: Number(event.target.value) })}
+          />
+        </Row>
+      ))}
+      <button type="button" className="tt-button" disabled={applying} onClick={apply}>
+        {applying ? t.applying : t.apply}
+      </button>
+      {result && <p className={result.bad ? 'tt-note bad' : 'tt-note'}>{result.note}</p>}
+    </>
+  )
 }
 
 function InstallPage({ setup, w, refresh }: { setup: SetupState; w: Words; refresh(): void }) {

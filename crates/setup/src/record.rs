@@ -18,6 +18,8 @@ pub struct Record {
     pub version: Option<String>,
     /// The onboarding was gone through to its end: the companion opens on its own pages from then on.
     pub finished: bool,
+    /// The test TV's size and place, as the player last set them in the companion.
+    pub test_tv: crate::cab_tv::TestTv,
 }
 
 impl Record {
@@ -52,6 +54,7 @@ mod tests {
             game: Some(PathBuf::from(r"D:\SteamLibrary\steamapps\common\ETS2")),
             version: Some("1.0.0".into()),
             finished: true,
+            test_tv: crate::cab_tv::TestTv { y: 0.2, ..Default::default() },
         };
         record.save(&dir).unwrap();
         assert_eq!(Record::load(&dir), record);

@@ -128,8 +128,8 @@ fn piece_box(piece: &Piece) -> Result<([f32; 3], [f32; 3]), String> {
     Ok(([at(0)?, at(1)?, at(2)?], [at(3)?, at(4)?, at(5)?]))
 }
 
-/// A piece's bounds (a box round its vertices, and a sphere round that) from its vertices as they are.
-fn set_bounds(piece: &mut Piece) -> Result<(), String> {
+/// A piece's bounds (a box round its vertices, or `reach`, and a sphere round that) from its vertices as they are.
+fn set_bounds(piece: &mut Piece, reach: Option<[[f32; 3]; 2]>) -> Result<(), String> {
     let (mut least, mut most) = ([f32::MAX; 3], [f32::MIN; 3]);
     for vertex in piece.vertices.chunks_exact(36) {
         for axis in 0..3 {
@@ -137,6 +137,9 @@ fn set_bounds(piece: &mut Piece) -> Result<(), String> {
             least[axis] = least[axis].min(value);
             most[axis] = most[axis].max(value);
         }
+    }
+    if let Some([low, high]) = reach {
+        (least, most) = (low, high);
     }
     let centre = [0, 1, 2].map(|axis| (least[axis] + most[axis]) / 2.0);
     let radius = (0..3).map(|axis| (most[axis] - centre[axis]).powi(2)).sum::<f32>().sqrt();
@@ -213,9 +216,11 @@ pub(crate) fn blocks_looking(
 /// A model of `pieces` (each a record, its vertices and indices, its material set): the source's header (its parts'
 /// table where it was), the part, the pieces' records, their vertices, their indices, each piece's bounds and the
 /// model's from its vertices as they are.
-pub(crate) fn assemble(mut pieces: Vec<Piece>) -> Result<Vec<u8>, String> {
+/// With a box `reach` (least and greatest corners), that's the bounds, whatever the vertices: a model moved once it's
+/// loaded, for the game not to leave it out for where it was.
+pub(crate) fn assemble(mut pieces: Vec<Piece>, reach: Option<[[f32; 3]; 2]>) -> Result<Vec<u8>, String> {
     for piece in &mut pieces {
-        set_bounds(piece)?;
+        set_bounds(piece, reach)?;
     }
     // The header (its parts' table where it was), the part, the pieces' records, their vertices, their indices.
     let table = HEADER_SIZE + PART_SIZE;

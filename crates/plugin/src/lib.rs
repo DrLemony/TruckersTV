@@ -18,6 +18,7 @@ mod mod_mount;
 mod screens;
 mod scs;
 mod telemetry;
+mod test_tv;
 mod truckersmp;
 mod typing;
 mod zoom;

@@ -31,13 +31,14 @@ use windows::Win32::UI::WindowsAndMessaging::{
 };
 use windows::core::{BOOL, HRESULT, Interface, w};
 
-use crate::hooks::{guarded, hook};
-use crate::{bridge, log, screens};
+use crate::hooks::{guarded, hook, hook_now, vtable_entry};
+use crate::{bridge, log, screens, test_tv};
 
 // vtable slots (IUnknown = 0..2)
 const VTBL_DEVICE_CREATE_TEXTURE2D: usize = 5;
 const VTBL_DEVICE_CREATE_SHADER_RESOURCE_VIEW: usize = 7;
 const VTBL_CONTEXT_PS_SET_SHADER_RESOURCES: usize = 8;
+const VTBL_CONTEXT_DRAW_INDEXED: usize = 12;
 const VTBL_SWAPCHAIN_PRESENT: usize = 8;
 const VTBL_SWAPCHAIN1_PRESENT1: usize = 22;
 const VTBL_CONTEXT_OM_SET_RENDER_TARGETS: usize = 33;
@@ -52,6 +53,7 @@ type CreateTexture2DFn = unsafe extern "system" fn(
 type CreateShaderResourceViewFn =
     unsafe extern "system" fn(*mut c_void, *mut c_void, *const c_void, *mut *mut c_void) -> HRESULT;
 type PSSetShaderResourcesFn = unsafe extern "system" fn(*mut c_void, u32, u32, *const *mut c_void);
+type DrawIndexedFn = unsafe extern "system" fn(*mut c_void, u32, u32, i32);
 type PresentFn = unsafe extern "system" fn(*mut c_void, u32, u32) -> HRESULT;
 type Present1Fn = unsafe extern "system" fn(*mut c_void, u32, u32, *const DXGI_PRESENT_PARAMETERS) -> HRESULT;
 type OMSetRenderTargetsFn = unsafe extern "system" fn(*mut c_void, u32, *const *mut c_void, *mut c_void);
@@ -69,6 +71,7 @@ type OMSetRenderTargetsAndUavsFn = unsafe extern "system" fn(
 static ORIG_CREATE_TEXTURE2D: AtomicUsize = AtomicUsize::new(0);
 static ORIG_CREATE_SHADER_RESOURCE_VIEW: AtomicUsize = AtomicUsize::new(0);
 static ORIG_PS_SET_SHADER_RESOURCES: AtomicUsize = AtomicUsize::new(0);
+static ORIG_DRAW_INDEXED: AtomicUsize = AtomicUsize::new(0);
 static ORIG_PRESENT: AtomicUsize = AtomicUsize::new(0);
 static ORIG_PRESENT1: AtomicUsize = AtomicUsize::new(0);
 static ORIG_OM_SET_RENDER_TARGETS: AtomicUsize = AtomicUsize::new(0);
@@ -315,6 +318,33 @@ unsafe extern "system" fn ps_set_shader_resources_hook(
         let original: PSSetShaderResourcesFn =
             std::mem::transmute(ORIG_PS_SET_SHADER_RESOURCES.load(Ordering::Acquire));
         original(this, start_slot, count, views)
+    }
+}
+
+/// Hooks `DrawIndexed`, for the test TV (`test_tv`): from the game's own context, with the game running. Its draw
+/// functions aren't a throwaway device's (read 2026-11-04: another function in each draw slot).
+///
+/// # Safety
+/// `context` is the game's, live in this call.
+pub unsafe fn hook_draw_indexed(context: *mut c_void) -> Result<(), String> {
+    // SAFETY: a live context's vtable, the slot within it (the caller's contract); the detour of its exact signature.
+    unsafe {
+        let target = vtable_entry(context, VTBL_CONTEXT_DRAW_INDEXED);
+        hook_now(target, draw_indexed_hook as *mut c_void, &ORIG_DRAW_INDEXED, "DrawIndexed")
+    }
+}
+
+/// # Safety
+/// Called in place of `ID3D11DeviceContext::DrawIndexed`, with its arguments.
+unsafe extern "system" fn draw_indexed_hook(this: *mut c_void, count: u32, start: u32, base: i32) {
+    // SAFETY: the game's own arguments, looked at first (`test_tv::on_draw`); then the trampoline, stored before the
+    // hook was switched on, with them as they came.
+    unsafe {
+        if test_tv::screen_next() {
+            guarded(|| test_tv::on_draw(this, count, start, base));
+        }
+        let original: DrawIndexedFn = std::mem::transmute(ORIG_DRAW_INDEXED.load(Ordering::Acquire));
+        original(this, count, start, base)
     }
 }
 

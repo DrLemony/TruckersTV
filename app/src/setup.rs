@@ -12,6 +12,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Manager, State, WebviewWindow};
 use westplay_host::log;
 use westplay_mapdata::files::GameFiles;
+use westplay_setup::cab_tv::TestTv;
 use westplay_setup::game::{self, FoundBy, Game};
 use westplay_setup::plugin::{self, InstallError};
 use westplay_setup::record::Record;
@@ -109,6 +110,8 @@ pub struct SetupState {
     /// The onboarding's language, a game language code (`tr_tr`), if it's known: see `onboarding_language`.
     /// Otherwise it follows Windows'.
     language: Option<String>,
+    /// The test TV's size and place.
+    test_tv: TestTv,
 }
 
 #[tauri::command]
@@ -125,6 +128,7 @@ pub async fn setup_state(store: State<'_, SetupStore>) -> Result<SetupState, Str
             found: found.iter().map(GameInfo::from).collect(),
             game_running: game::running(),
             language: onboarding_language(),
+            test_tv: record.test_tv,
         })
     })
     .await
@@ -183,10 +187,10 @@ pub async fn check_game(dir: PathBuf, store: State<'_, SetupStore>) -> Result<Ga
 }
 
 /// The mod built for `game` and its installed mods.
-fn build_mod(game: &Game) -> Result<(Vec<u8>, game_mod::Built), String> {
+fn build_mod(game: &Game, test: TestTv) -> Result<(Vec<u8>, game_mod::Built), String> {
     let files = GameFiles::install(&game.dir).map_err(|e| e.to_string())?;
     let marks = cab_mark::for_tv(&files, &installed_mod_files(game));
-    Ok(game_mod::build(&files, &marks))
+    Ok(game_mod::build(&files, &marks, test))
 }
 
 /// The installed mods' files (active in a profile or not), for the dashboards the cab's mark goes in.
@@ -199,9 +203,9 @@ fn installed_mod_files(game: &Game) -> Vec<PathBuf> {
 /// How often the game and the installed mods are looked at.
 const MODS_LOOK: Duration = Duration::from_secs(30);
 
-/// What TruckersTV's mod was last worked out from: the game (its folder, version and DLCs) and each installed mod's
-/// files (their path, size and when they last changed).
-type ModsStamp = (PathBuf, Option<String>, usize, Vec<(PathBuf, u64, Option<SystemTime>)>);
+/// What TruckersTV's mod was last worked out from: the game (its folder, version and DLCs), each installed mod's
+/// files (their path, size and when they last changed) and the test TV.
+type ModsStamp = (PathBuf, Option<String>, usize, Vec<(PathBuf, u64, Option<SystemTime>)>, TestTv);
 
 /// Keeps the mod as the game and the installed mods want it: the TV placed in the trucks the game has, and the cab's
 /// mark in their dashboards (`cab_mark`: a mod's script updated, or another copy of it installed). While the game is
@@ -239,7 +243,7 @@ fn look_at_mods(inner: &Inner, looked: &mut Option<ModsStamp>) {
         })
         .collect();
     stamps.sort();
-    let stamp = (game.dir.clone(), game.version.map(|version| version.to_string()), game.dlcs.len(), stamps);
+    let stamp = (game.dir.clone(), game.version.map(|version| version.to_string()), game.dlcs.len(), stamps, record.test_tv);
     if looked.as_ref() == Some(&stamp) {
         return;
     }
@@ -248,8 +252,8 @@ fn look_at_mods(inner: &Inner, looked: &mut Option<ModsStamp>) {
         Err(error) => return log!("setup: the installed mods: the game can't be read: {error}"),
     };
     let marks = cab_mark::for_tv(&files, &mods);
-    if !cab_mark::current(&marks, &ours) || !game_mod::cab_tv_current(&files, &ours) {
-        let (bytes, built) = game_mod::build(&files, &marks);
+    if !cab_mark::current(&marks, &ours) || !game_mod::cab_tv_current(&files, &ours, record.test_tv) {
+        let (bytes, built) = game_mod::build(&files, &marks, record.test_tv);
         let made = ours.parent().ok_or("no folder".to_owned()).and_then(|dir| {
             game_mod::install(&bytes, dir).map_err(|error| error.to_string())
         });
@@ -305,7 +309,7 @@ pub async fn install_into_game(
     let inner = store.0.clone();
     blocking(move || {
         let game = Game::recognise(&dir).ok_or("gameGone")?;
-        let mod_error = install_mod(&game).err();
+        let mod_error = install_mod(&game, inner.record().test_tv).err();
         let plugin = match inner.plugin.as_deref() {
             None => PluginOutcome::Failed { error: "noPlugin".into() },
             Some(ours) => install_plugin(&game, ours, administrator),
@@ -322,12 +326,29 @@ pub async fn install_into_game(
     .await
 }
 
+/// Keeps the test TV's size and place and makes the mod with them, for the game's next start. `false`: the game is
+/// running, holding the mod: it's made once the game closes ([`watch_installed_mods`]).
+#[tauri::command]
+pub async fn set_test_tv(test: TestTv, store: State<'_, SetupStore>) -> Result<bool, String> {
+    let inner = store.0.clone();
+    blocking(move || {
+        inner.update(|record| record.test_tv = test)?;
+        if game::running() {
+            return Ok(false);
+        }
+        let game = inner.record().game.as_deref().and_then(Game::recognise).ok_or("gameGone")?;
+        install_mod(&game, test)?;
+        Ok(true)
+    })
+    .await
+}
+
 /// The mod into TruckersTV's own folder; then, from a game TruckersTV 1.2 set up, its copy taken out of the game's
 /// `mod` folder and out of each profile's active mods (the game closed: the companion installs only then).
 /// Two copies would stop the game when a screen starts, and the plugin doesn't mount its own while the old one
 /// is there.
-fn install_mod(game: &Game) -> Result<(), String> {
-    let (bytes, built) = build_mod(game)?;
+fn install_mod(game: &Game, test: TestTv) -> Result<(), String> {
+    let (bytes, built) = build_mod(game, test)?;
     if let Some(why) = &built.no_tv {
         log!("setup: no TV in the mod: {why}");
     }
