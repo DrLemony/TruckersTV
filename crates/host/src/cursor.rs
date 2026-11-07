@@ -369,6 +369,22 @@ impl Painter {
         }
     }
 
+    /// Darkens the whole frame by `amount` (0: as it is, 1: black).
+    pub fn dim(&self, amount: f32) -> Result<()> {
+        if amount <= 0.0 {
+            return Ok(());
+        }
+        // SAFETY: plain Direct2D calls on the live context and its target; the brush is a local.
+        unsafe {
+            let context = &self.context;
+            context.BeginDraw();
+            let size = context.GetSize();
+            let brush = context.CreateSolidColorBrush(&straight(black(amount.min(1.0))), None)?;
+            context.FillRectangle(&D2D_RECT_F { left: 0.0, top: 0.0, right: size.width, bottom: size.height }, &brush);
+            context.EndDraw(None, None)
+        }
+    }
+
     /// `area` with the `dot` taken out of it.
     fn outside(&self, area: &D2D_RECT_F, dot: &D2D1_ELLIPSE) -> Result<ID2D1Geometry> {
         // SAFETY: plain Direct2D geometry calls; the sink is closed before the geometry is used.

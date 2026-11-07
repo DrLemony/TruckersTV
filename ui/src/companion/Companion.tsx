@@ -32,7 +32,15 @@ import {
   youtubeMusicSignIn,
   youtubeMusicSignOut,
 } from './useHostStatus'
-import { type Binding, DEFAULT_KEY, KEYBIND_IDS, type KeybindId, SENSITIVITY, useSettings } from './useSettings'
+import {
+  BRIGHTNESS,
+  type Binding,
+  DEFAULT_KEY,
+  KEYBIND_IDS,
+  type KeybindId,
+  SENSITIVITY,
+  useSettings,
+} from './useSettings'
 import { type Words, wordsFor } from './words'
 
 const PAGES = ['status', 'keys', 'accounts', 'testTv', 'install'] as const
@@ -188,6 +196,15 @@ function StatusPage({ status, w }: { status: HostStatus | null; w: Words }) {
           <li key={step}>{step}</li>
         ))}
       </ol>
+      {settings && (
+        <SliderRow
+          saved={settings.tv.brightness}
+          label={w.brightness}
+          range={BRIGHTNESS}
+          show={(value) => `${Math.round(value * 100)}%`}
+          save={(brightness) => void update({ ...settings, tv: { ...settings.tv, brightness } })}
+        />
+      )}
       <Row title={w.videos} detail={videos ?? w.videosDetail}>
         {videos && (
           <button type="button" className="tt-button quiet" onClick={() => setVideos(null)}>
@@ -266,9 +283,11 @@ function KeysPage({ w }: { w: Words }) {
           }
         />
       </Row>
-      <SpeedRow
+      <SliderRow
         saved={settings.interaction.sensitivity}
         label={k.speed}
+        range={SENSITIVITY}
+        show={(value) => `${value.toFixed(1)}×`}
         save={(sensitivity) => void update({ ...settings, interaction: { ...settings.interaction, sensitivity } })}
       />
       {KEYBIND_IDS.map((id) => (
@@ -305,7 +324,20 @@ function Switch({ on, label, change }: { on: boolean; label: string; change(on: 
 }
 
 /** The pointer's speed: its slider follows the thumb, and it's saved once it's let go. */
-function SpeedRow({ saved, label, save }: { saved: number; label: string; save(value: number): void }) {
+/** A setting on a slider, saved as it's let go. */
+function SliderRow({
+  saved,
+  label,
+  range,
+  show,
+  save,
+}: {
+  saved: number
+  label: string
+  range: { min: number; max: number; step: number }
+  show(value: number): string
+  save(value: number): void
+}) {
   const [dragging, setDragging] = useState<number | null>(null)
   const value = dragging ?? saved
   const commit = () => {
@@ -314,14 +346,14 @@ function SpeedRow({ saved, label, save }: { saved: number; label: string; save(v
   }
   return (
     <Row title={label}>
-      <span className="tt-value">{`${value.toFixed(1)}×`}</span>
+      <span className="tt-value">{show(value)}</span>
       <input
         type="range"
         className="tt-range"
         aria-label={label}
-        min={SENSITIVITY.min}
-        max={SENSITIVITY.max}
-        step={SENSITIVITY.step}
+        min={range.min}
+        max={range.max}
+        step={range.step}
         value={value}
         onChange={(event) => setDragging(Number(event.target.value))}
         onPointerUp={commit}
@@ -443,7 +475,7 @@ function useInstall(dir: string | undefined, installed: () => void) {
   return { working, report, error, administrator, install }
 }
 
-/** The test TV's sliders, in metres, as the app keeps them (`TestTv::tv`). */
+/** The TV's sliders, in metres, as the app keeps them (`TestTv::tv`). */
 const TEST_TV_SLIDERS = [
   { id: 'width', min: 0.3, max: 1.6 },
   { id: 'z', min: -1, max: 1 },
@@ -451,7 +483,7 @@ const TEST_TV_SLIDERS = [
   { id: 'x', min: -1.76, max: 1.76 },
 ] as const
 
-/** The test TV's size and place: it follows the sliders in the running game, and they're kept once applied. */
+/** The TV's size and place: it follows the sliders in the running game, and they're kept once saved. */
 function TestTvPage({ setup, w, refresh }: { setup: SetupState; w: Words; refresh(): void }) {
   const t = w.testTv
   const [test, setTest] = useState<TestTv>(setup.testTv)

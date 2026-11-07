@@ -30,6 +30,11 @@ struct Inner {
 }
 
 impl SetupStore {
+    /// The TV's size and place, as last saved.
+    pub fn test_tv(&self) -> TestTv {
+        self.0.record().test_tv
+    }
+
     /// The record kept in `dir`.
     pub fn load(dir: &Path, app: &AppHandle) -> Self {
         let record = Record::load(dir);

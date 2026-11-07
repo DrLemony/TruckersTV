@@ -33,12 +33,52 @@ pub struct Settings {
     pub tv: TvSettings,
 }
 
-/// The cab's TV app: the folder its PC videos come from (chosen in the companion's Customize), or none.
+/// The cab's TV: the folder its PC videos come from (chosen in the companion's Customize), or none; how bright
+/// its screen is.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct TvSettings {
     #[serde(deserialize_with = "lenient")]
     pub videos: Option<String>,
+    #[serde(deserialize_with = "lenient")]
+    pub brightness: Brightness,
+}
+
+/// How bright the screen is drawn, a share of the page's own brightness, from [`Self::MIN`] to 1 (the default:
+/// as the page is). The game lights the screen up on its own, at night most of all (owner 2026-11-07: washed out).
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(from = "f32", into = "f32")]
+pub struct Brightness(f32);
+
+impl Brightness {
+    pub const MIN: f32 = 0.3;
+
+    /// Out-of-range values are clamped; anything that isn't a number is the default.
+    pub fn new(value: f32) -> Self {
+        if value.is_finite() { Self(value.clamp(Self::MIN, 1.0)) } else { Self::default() }
+    }
+
+    pub fn get(self) -> f32 {
+        self.0
+    }
+}
+
+impl From<f32> for Brightness {
+    fn from(value: f32) -> Self {
+        Self::new(value)
+    }
+}
+
+impl From<Brightness> for f32 {
+    fn from(brightness: Brightness) -> Self {
+        brightness.0
+    }
+}
+
+impl Default for Brightness {
+    fn default() -> Self {
+        Self(1.0)
+    }
 }
 
 /// The sound the players play: its tone (the cab's Settings › Equalizer), the same in every truck. As iOS's
@@ -413,7 +453,7 @@ mod tests {
                 equalizer: crate::speakers::Equalizer { bass: -3, mid: 1, treble: 2 },
                 custom: true,
             },
-            tv: TvSettings { videos: Some(r"D:\Videos\Trips".into()) },
+            tv: TvSettings { videos: Some(r"D:\Videos\Trips".into()), brightness: Brightness::new(0.6) },
         };
         let json = to_json(&settings);
         assert!(json.contains("\"version\": 2"), "{json}");
@@ -488,6 +528,15 @@ mod tests {
         assert_eq!(Sensitivity::new(f32::NAN), Sensitivity::default());
         let stored = parse(r#"{"interaction": {"sensitivity": 99}}"#).unwrap();
         assert_eq!(stored.interaction.sensitivity.get(), Sensitivity::MAX);
+    }
+
+    #[test]
+    fn brightness_stays_in_range() {
+        assert_eq!(Brightness::new(2.0).get(), 1.0);
+        assert_eq!(Brightness::new(0.0).get(), Brightness::MIN);
+        assert_eq!(Brightness::new(f32::NAN).get(), 1.0);
+        assert_eq!(parse(r#"{"tv": {"videos": null}}"#).unwrap().tv.brightness.get(), 1.0);
+        assert_eq!(parse(r#"{"tv": {"brightness": 0.6}}"#).unwrap().tv.brightness.get(), 0.6);
     }
 
     #[test]

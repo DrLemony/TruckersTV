@@ -16,6 +16,8 @@ export interface Settings {
   /** The cab's TV app: the folder its PC videos come from, or `null`: none chosen. */
   tv: {
     videos: string | null
+    /** How bright the screen is drawn, from `BRIGHTNESS.min` to 1 (as the page is). */
+    brightness: number
   }
 }
 
@@ -55,6 +57,8 @@ export interface Binding {
 
 /** Mirrors `westplay_host::settings::Sensitivity` (the app corrects anything outside it). */
 export const SENSITIVITY = { min: 0.5, max: 3, step: 0.1 }
+/** The screen's brightness (`Brightness` in the app's settings). */
+export const BRIGHTNESS = { min: 0.3, max: 1, step: 0.05 }
 
 export interface SettingsState {
   /** `null` until loaded. */

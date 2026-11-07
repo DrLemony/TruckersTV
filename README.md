@@ -25,17 +25,24 @@ Get the installer from the [latest release](https://github.com/DrLemony/Truckers
 
 ## What it is
 
-TruckersTV is a Windows app and a game plugin. The TV is bought in the game's own truck shop, under *Bed toys*, as "TruckersTV TV" (1500 €) or the bigger "TruckersTV TV XL" (3000 €) and "TruckersTV TV XXL" (4500 €). "TruckersTV TV Test" (100 €) can be resized and moved around the cab from the TruckersTV window, live while the game runs. It is drawn into the cab, and the truck's own screens stay the game's. There's no mod to install by hand, so it also runs under TruckersMP.
+TruckersTV is a Windows app and a game plugin. The TV is bought in the game's own truck shop, under *Bed toys*, as "TV" (1500 €). Its size and place in the cab are set from the TruckersTV window, live while the game runs, and kept. It is drawn into the cab, and the truck's own screens stay the game's. There's no mod to install by hand, so it also runs under TruckersMP.
 
 For now the TV is placed in the Iveco S-Way, over the right door.
 
 ## Using it
 
 1. Open TruckersTV before the game and go through its setup.
-2. In the game, buy the TV for your truck.
+2. In the game, drive the Iveco S-Way into a truck dealer and buy the **TV** under *Accessories › Bed toys*. Its size and place are set on the TV page of the TruckersTV window: press *Save* to keep them.
+
+   <img src="docs/images/shop.webp" width="700" alt="The TV in the truck shop, under Bed toys">
+
 3. Hold the interaction key to take the mouse: the cursor moves on the TV, a click clicks, the keyboard types.
 
 ## Screens
+
+![The TV in the cab, under TruckersMP](docs/images/in-game.webp)
+
+![The TV in the cab by day](docs/images/in-game-day.webp)
 
 | | |
 |---|---|
@@ -52,7 +59,7 @@ The companion app on the PC shows the TV's state, its keys and your accounts:
 
 TruckersTV, Euro Truck Simulator 2'de tırın kabinine televizyon koyar: YouTube, müzik, canlı TV, tarayıcı ve kendi videoların, Android TV tarzı bir ana ekranla. Şu an beta ve yalnızca Iveco S-Way'de çalışıyor; TruckersMP ile uyumlu.
 
-[Son sürümden](https://github.com/DrLemony/TruckersTV/releases) kurulum dosyasını indir ve çalıştır, sonra oyundan önce TruckersTV'yi aç. Televizyonu oyunda tır galerisinden, *Yatak Eşyaları* altından satın alırsın. *TruckersTV TV Test*'in boyutunu ve yerini oyun açıkken TruckersTV penceresinden değiştirebilirsin. Windows uyarı verirse *Ek bilgi*, ardından *Yine de çalıştır*'a bas.
+[Son sürümden](https://github.com/DrLemony/TruckersTV/releases) kurulum dosyasını indir ve çalıştır, sonra oyundan önce TruckersTV'yi aç. Televizyonu oyunda tır galerisinden, *Aksesuarlar › Yatak Eşyaları* altından **TV** adıyla satın alırsın (yukarıdaki resim). Boyutunu ve yerini oyun açıkken TruckersTV penceresinden değiştirip kaydedebilirsin. Windows uyarı verirse *Ek bilgi*, ardından *Yine de çalıştır*'a bas.
 
 ## Building
 

@@ -38,7 +38,7 @@ let settings: Settings = {
     volumeUp: { key: 0x33, withInteractionKey: true },
     zoom: { key: 0x34, withInteractionKey: true },
   },
-  tv: { videos: null },
+  tv: { videos: null, brightness: 1 },
 }
 
 const status = (): HostStatus => ({

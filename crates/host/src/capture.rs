@@ -69,6 +69,8 @@ pub struct Capture {
     painter: Option<Painter>,
     /// The cursor as last drawn into the shared frame, and when; whether drawing it failed (said once).
     drawn: Cell<Option<Look>>,
+    /// The brightness the shared frame was last sent out at.
+    lit: Cell<f32>,
     cursor_at: Cell<Instant>,
     draw_failed: Cell<bool>,
 }
@@ -123,6 +125,7 @@ impl Capture {
             has_clean: Cell::new(false),
             painter,
             drawn: Cell::new(None),
+            lit: Cell::new(1.0),
             cursor_at: Cell::new(Instant::now()),
             draw_failed: Cell::new(false),
         })
@@ -140,8 +143,9 @@ impl Capture {
 
     /// Publishes the newest frame if it's waiting and due, with the `cursor` drawn over it where it is now (the
     /// page squeezed into the frame `squeeze` times its height); else, the cursor moved or changed, the page's last
-    /// frame again with it (called every turn of the host's loop).
-    pub fn flush(&self, cursor: Option<Look>, squeeze: f32) {
+    /// frame again with it (called every turn of the host's loop). The whole frame goes out `brightness` times as
+    /// bright (1: as the page is).
+    pub fn flush(&self, cursor: Option<Look>, squeeze: f32, brightness: f32) {
         if self.broken() {
             return;
         }
@@ -154,7 +158,7 @@ impl Capture {
                 .and_then(|surface| unsafe { surface.cast::<IDirect3DDxgiInterfaceAccess>()?.GetInterface() });
             // A frame whose texture can't be had is done with all the same.
             let Ok(texture) = texture else { return true };
-            match self.publish(&texture, cursor, squeeze) {
+            match self.publish(&texture, cursor, squeeze, brightness) {
                 Lock::Held => true,
                 Lock::Busy => false,
                 // Done with: the pipeline is built anew, with frames to come.
@@ -165,20 +169,21 @@ impl Capture {
             }
         });
         match sent {
-            Some(true) => self.sent(cursor, now),
+            Some(true) => self.sent(cursor, brightness, now),
             Some(false) => {
                 self.dropped.fetch_add(1, Ordering::Relaxed);
             }
             None => {}
         }
-        // The cursor moved or changed, and no new frame of the page's to take it: the last one again, with it.
+        // The cursor moved or changed, or the brightness, and no new frame of the page's to take it: the last one
+        // again, with it.
         if sent != Some(true)
             && self.has_clean.get()
-            && cursor != self.drawn.get()
+            && (cursor != self.drawn.get() || brightness != self.lit.get())
             && now.saturating_duration_since(self.cursor_at.get()) >= CURSOR_INTERVAL
         {
-            match self.compose(cursor, squeeze) {
-                Lock::Held => self.sent(cursor, now),
+            match self.compose(cursor, squeeze, brightness) {
+                Lock::Held => self.sent(cursor, brightness, now),
                 // Tried again next turn.
                 Lock::Busy => {}
                 Lock::Abandoned => self.abandoned.store(true, Ordering::Relaxed),
@@ -186,16 +191,17 @@ impl Capture {
         }
     }
 
-    /// A frame went out, with `cursor` on it.
-    fn sent(&self, cursor: Option<Look>, now: Instant) {
+    /// A frame went out, with `cursor` on it, at `brightness`.
+    fn sent(&self, cursor: Option<Look>, brightness: f32, now: Instant) {
         self.bridge.bridge().host.frame_seq.fetch_add(1, Ordering::Release);
         self.frames.fetch_add(1, Ordering::Relaxed);
         self.drawn.set(cursor);
+        self.lit.set(brightness);
         self.cursor_at.set(now);
     }
 
     /// Keeps a frame of the page's as captured, and sends it out with the cursor on it.
-    fn publish(&self, frame: &ID3D11Texture2D, cursor: Option<Look>, squeeze: f32) -> Lock {
+    fn publish(&self, frame: &ID3D11Texture2D, cursor: Option<Look>, squeeze: f32, brightness: f32) -> Lock {
         // SAFETY: the frame and the clean copy are alive, the clean copy the shared frame's size; the region fits
         // both.
         unsafe {
@@ -212,12 +218,12 @@ impl Capture {
             self.context.CopySubresourceRegion(&self.clean, 0, 0, 0, 0, frame, 0, Some(&region));
         }
         self.has_clean.set(true);
-        self.compose(cursor, squeeze)
+        self.compose(cursor, squeeze, brightness)
     }
 
-    /// The page's last frame into the shared texture, the cursor drawn over it, if its lock could be had
-    /// ([`Lock::Held`]: done).
-    fn compose(&self, cursor: Option<Look>, squeeze: f32) -> Lock {
+    /// The page's last frame into the shared texture, the cursor drawn over it, dimmed to `brightness`, if its
+    /// lock could be had ([`Lock::Held`]: done). Without Direct2D the frame goes out as bright as the page.
+    fn compose(&self, cursor: Option<Look>, squeeze: f32, brightness: f32) -> Lock {
         let lock = self.shared.try_lock();
         if lock != Lock::Held {
             return lock;
@@ -229,6 +235,12 @@ impl Capture {
             && !self.draw_failed.replace(true)
         {
             crate::log!("cursor: couldn't be drawn: {e}");
+        }
+        if let Some(painter) = &self.painter
+            && let Err(e) = painter.dim(1.0 - brightness)
+            && !self.draw_failed.replace(true)
+        {
+            crate::log!("brightness: couldn't be drawn: {e}");
         }
         self.shared.unlock();
         Lock::Held

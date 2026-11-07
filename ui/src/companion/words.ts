@@ -1,6 +1,6 @@
 /** The window's words, in Turkish and English: the game's language, or Windows' before it ever ran. */
 const TR = {
-  nav: { status: 'Durum', keys: 'Tuşlar', accounts: 'Hesaplar', testTv: 'Test TV', install: 'Kurulum' },
+  nav: { status: 'Durum', keys: 'Tuşlar', accounts: 'Hesaplar', testTv: 'TV', install: 'Kurulum' },
   state: {
     starting: ['Başlıyor', 'Motor hazırlanıyor.'],
     stopped: ['Durdu', 'Bir sorun çıktı. Aşağıdaki hataya bak.'],
@@ -12,11 +12,12 @@ const TR = {
   howTo: 'Nasıl kullanılır',
   steps: [
     'Iveco S-Way ile bir tır mağazasına gir.',
-    'Yatak oyuncakları bölümünden TruckersTV, XL ya da XXL’i satın al.',
+    'Yatak oyuncakları bölümünden TV’yi satın al.',
     'Kabinde etkileşim tuşuna basılı tut, fareyle TV’yi kullan.',
   ],
   frames: 'Görüntü',
   framesValue: (fps: number) => `${fps} kare/sn`,
+  brightness: 'Ekran parlaklığı',
   videos: 'Bilgisayardaki videolar',
   videosDetail: 'Canlı TV bu klasördeki videoları gösterir.',
   videosNone: 'Seçilmedi',
@@ -48,14 +49,14 @@ const TR = {
     signOut: 'Çıkış yap',
   },
   testTv: {
-    title: 'Test TV',
-    sub: 'Mağazadaki Yatak oyuncakları bölümünden TruckersTV TV Test’i al. Oyun açıkken kaydırdıkça TV kabinde kayar, kalıcı olması için Uygula’ya bas.',
+    title: 'TV',
+    sub: 'Oyun açıkken kaydırdıkça TV kabinde kayar. Boyutunu ve yerini hatırlaması için Kaydet’e bas.',
     width: 'Boyut',
-    z: 'Öne / arkaya',
+    z: 'Sola / sağa',
     y: 'Aşağı / yukarı',
-    x: 'Sola / sağa',
-    apply: 'Uygula',
-    applying: 'Uygulanıyor…',
+    x: 'Öne / arkaya',
+    apply: 'Kaydet',
+    applying: 'Kaydediliyor…',
     made: 'Kaydedildi. Oyunu açınca TV burada olacak.',
     waiting: 'Kaydedildi. Oyunu kapatınca kalıcı olur.',
   },
@@ -100,7 +101,7 @@ const TR = {
 }
 
 const EN: typeof TR = {
-  nav: { status: 'Status', keys: 'Keys', accounts: 'Accounts', testTv: 'Test TV', install: 'Install' },
+  nav: { status: 'Status', keys: 'Keys', accounts: 'Accounts', testTv: 'TV', install: 'Install' },
   state: {
     starting: ['Starting', 'The engine is getting ready.'],
     stopped: ['Stopped', 'Something went wrong: see the error below.'],
@@ -112,11 +113,12 @@ const EN: typeof TR = {
   howTo: 'How to use it',
   steps: [
     'Drive an Iveco S-Way into a truck dealer.',
-    'Buy TruckersTV TV, XL or XXL from the bed toys.',
+    'Buy the TV from the bed toys.',
     'In the cab, hold the interaction key and use the TV with the mouse.',
   ],
   frames: 'Picture',
   framesValue: (fps: number) => `${fps} fps`,
+  brightness: 'Screen brightness',
   videos: 'Videos on this PC',
   videosDetail: 'Live TV shows the videos in this folder.',
   videosNone: 'None chosen',
@@ -148,14 +150,14 @@ const EN: typeof TR = {
     signOut: 'Sign out',
   },
   testTv: {
-    title: 'Test TV',
-    sub: 'Buy the TruckersTV TV Test under Bed toys in the shop. With the game running it moves as you slide; press Apply to keep it.',
+    title: 'TV',
+    sub: 'With the game running the TV moves as you slide. Press Save to keep its size and place.',
     width: 'Size',
-    z: 'Forward / back',
+    z: 'Left / right',
     y: 'Down / up',
-    x: 'Left / right',
-    apply: 'Apply',
-    applying: 'Applying…',
+    x: 'Forward / back',
+    apply: 'Save',
+    applying: 'Saving…',
     made: 'Saved. The TV will be here when you start the game.',
     waiting: 'Saved. It stays once the game is closed.',
   },

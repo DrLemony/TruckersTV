@@ -22,16 +22,15 @@ const NAME: &str = "westplay_tv";
 /// The slot it's bought at: one TV at a time, of any size.
 const SLOT: &str = "toybed";
 
-/// A truck the TV goes in: where its slot's hookup point is in the interior's model, and the TVs sold for it.
+/// A truck the TV goes in: where its slot's hookup point is in the interior's model.
 struct Truck {
     id: &'static str,
     /// The `toybed` locator's position (its rotation none, in the trucks read).
     hookup: [f32; 3],
-    tvs: &'static [Tv],
 }
 
-/// A TV in the shop, and where it is on the wall over the right door (metres, the interior's axes: +x to the
-/// co-driver's side, +y up, -z to the windscreen).
+/// The TV in the shop, and where it is (metres, the interior's axes: +x to the co-driver's side, +y up, -z to the
+/// windscreen).
 struct Tv {
     /// Its accessory's name, the first of its unit name's parts (a token, 12 characters at the most), and its files'.
     unit: &'static str,
@@ -46,11 +45,8 @@ struct Tv {
     width: f32,
 }
 
-/// The wall's nearest face behind the XL and the XXL (read 2026-11-04: at z 0.48, y 0.51).
-const WALL_XL: f32 = 1.741;
-
 /// The S-Way's interior model, and its `prod_std` interior's tied curtain, a piece of its own in it (the `prod_opt`
-/// interior has a copy, 29, of another colour), where the XXL goes: taken out, for that interior alone (owner
+/// interior has a copy, 29, of another colour), where a big TV goes: taken out, for that interior alone (owner
 /// 2026-11-04: "only for this cabin"). The game's update moving it: `CURTAIN_TRIANGLES` and `CURTAIN_FROM` tell, and
 /// the curtain stays.
 const INTERIOR: &str = "vehicle/truck/iveco_sway/interior/model/as.pmg";
@@ -62,48 +58,13 @@ const CURTAIN_FROM: f32 = 0.1506;
 /// The Iveco S-Way's interior (`/vehicle/truck/iveco_sway/interior/model/as.pmd`, every interior but the UK's, read
 /// 2026-11-03): the door's window from z -0.75 to 0.05 below y 0.15, the wall over it a panel at x 1.751 to 1.77 from
 /// z -0.36 to 0.18 and y 0.40 to 0.90 (the A pillar's trim nearer the cab at -0.40, the curtain's rail behind 0.20).
-/// The XL goes on past that rail, as the player marked (owner 2026-11-04), from the small one's top left corner down
-/// to y 0.36 and back to z 0.44, where the `top_opt` interior's bunk side starts. The XXL fills what the player marked
-/// in the `prod_std` interior, the curtain out ([`without_curtain`]): to z 0.65, its bunk's side, and down to y 0.27.
-/// shortcut: the shop sells both in every interior; `prod_opt`'s curtain comes through them and `top_opt`'s bunk side
-/// through the XXL, until each is asked for.
-const TRUCKS: &[Truck] = &[Truck {
-    id: "iveco.sway",
-    hookup: [0.737_660_5, -0.482_281_54, 0.481_756_9],
-    tvs: &[
-        Tv {
-            unit: "wp_tv",
-            file: NAME,
-            name: "TruckersTV TV",
-            price: 1500,
-            wall: 1.751,
-            middle: [0.662, -0.09],
-            width: 0.54,
-        },
-        Tv {
-            unit: "wp_tv_xl",
-            file: "westplay_tv_xl",
-            name: "TruckersTV TV XL",
-            price: 3000,
-            wall: WALL_XL,
-            middle: [0.5888, 0.04],
-            width: 0.80,
-        },
-        Tv {
-            unit: "wp_tv_xxl",
-            file: "westplay_tv_xxl",
-            name: "TruckersTV TV XXL",
-            price: 4500,
-            wall: WALL_XL,
-            middle: [0.5578, 0.14],
-            width: 1.02,
-        },
-    ],
-}];
+/// The TV starts there; past the rail, the `prod_std` interior's curtain is out ([`without_curtain`]) for a bigger one.
+/// shortcut: `prod_opt`'s curtain and `top_opt`'s bunk side stay, and a big TV may go through them.
+const TRUCKS: &[Truck] = &[Truck { id: "iveco.sway", hookup: [0.737_660_5, -0.482_281_54, 0.481_756_9] }];
 
-/// The test TV (owner 2026-11-04): sold beside the others, its size and place the player's, from the companion. Metres,
-/// a [`Tv`]'s axes: the wall behind it (`x`), its middle (`y`, `z`), its width (its height follows). It always faces
-/// -x, as the others do. The game reads the model as it starts; with it running the plugin moves it where it's told
+/// The TV (owner 2026-11-07: "one TV, named TV", once the test TV): its size and place the player's, from the
+/// companion. Metres, a [`Tv`]'s axes: the wall behind it (`x`), its middle (`y`, `z`), its width (its height
+/// follows). It always faces -x. Sold under the first TV's accessory, so a truck that has that one keeps it. The game reads the model as it starts; with it running the plugin moves it where it's told
 /// ([`TestTv::glass`], the plugin's test_tv.rs), its bezel growing with it, until the next start makes it exact.
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -114,12 +75,11 @@ pub struct TestTv {
     pub width: f32,
 }
 
-const TEST_UNIT: &str = "wp_tv_test";
-/// The test TV's bounds, whatever its place (the cab's axes): all the cab, for the game to draw it wherever the player
+/// The TV's bounds, whatever its place (the cab's axes): all the cab, for the game to draw it wherever the player
 /// has moved it to.
 const TEST_REACH: [[f32; 3]; 2] = [[-2.6, -1.6, -2.0], [2.6, 2.0, 2.0]];
 
-/// Where it starts: where the small TV is.
+/// Where it starts: over the right door.
 impl Default for TestTv {
     fn default() -> Self {
         Self { x: 1.751, y: 0.662, z: -0.09, width: 0.54 }
@@ -138,10 +98,10 @@ impl TestTv {
     /// As a TV in the shop, kept to the companion's sliders: within the cab, and no smaller than its bracket.
     fn tv(self) -> Tv {
         Tv {
-            unit: TEST_UNIT,
-            file: "westplay_tv_test",
-            name: "TruckersTV TV Test",
-            price: 100,
+            unit: "wp_tv",
+            file: NAME,
+            name: "TV",
+            price: 1500,
             wall: self.x.clamp(-1.76, 1.76),
             middle: [self.y.clamp(-0.6, 1.0), self.z.clamp(-1.0, 1.0)],
             width: self.width.clamp(0.3, 1.6),
@@ -191,12 +151,10 @@ pub fn files(
     ];
     let test = test.tv();
     for truck in trucks {
-        for tv in truck.tvs.iter().chain([&test]) {
-            let model = model_name(truck, tv);
-            files.push((format!("{DIR}/{model}.pmg"), self::model(truck, tv, texture_height)?));
-            files.push((format!("{DIR}/{model}.pmd"), model::descriptor_in(DIR)?));
-            files.push((definition_path(truck, tv), accessory(truck, tv).into_bytes()));
-        }
+        let model = model_name(truck, &test);
+        files.push((format!("{DIR}/{model}.pmg"), self::model(truck, &test, texture_height)?));
+        files.push((format!("{DIR}/{model}.pmd"), model::descriptor_in(DIR)?));
+        files.push((definition_path(truck, &test), accessory(truck, &test).into_bytes()));
     }
     if let Some(interior) = game.read(INTERIOR).ok().flatten().and_then(without_curtain) {
         files.push((INTERIOR.to_owned(), interior));
@@ -242,7 +200,7 @@ pub fn current(game: &GameFiles, built: &GameFiles, screen_texture: &str, textur
     let test = test.tv();
     let none_more = TRUCKS
         .iter()
-        .flat_map(|truck| truck.tvs.iter().chain([&test]).map(|tv| definition_path(truck, tv)))
+        .map(|truck| definition_path(truck, &test))
         .filter(|definition| !wanted.iter().any(|(path, _)| path == definition))
         .all(|definition| built.read(&definition).ok().flatten().is_none());
     has_all && none_more
@@ -294,26 +252,22 @@ fn model(truck: &Truck, tv: &Tv, texture_height: u32) -> Result<Vec<u8>, String>
     if panel.vertices.len() != TV_PANEL_VERTICES * TV_VERTEX_SIZE {
         return Err("the panel isn't as the plugin finds it".into());
     }
-    let test = tv.unit == TEST_UNIT;
     let glass = glass(
         from_hookup([front - GLASS_AHEAD, y, z]),
         glass_width / 2.0,
         (height - 2.0 * BEZEL) / 2.0,
         SCREEN_HEIGHT as f32 / texture_height as f32,
-        test,
     )?;
-    model::assemble(vec![panel, glass], test.then(|| TEST_REACH.map(from_hookup)))
+    model::assemble(vec![panel, glass], Some(TEST_REACH.map(from_hookup)))
 }
 
 /// The glass: a quad about `middle` facing -x, `half_width` along z and `half_height` along y, of the screen's
 /// material; its texture coordinates across the frame, `frame_bottom` the frame's last row's (the texture's rows
-/// past it, which tell the layouts apart, not shown); `marked`, the test TV's ([`TEST_TV_MARK`]).
-fn glass(middle: [f32; 3], half_width: f32, half_height: f32, frame_bottom: f32, marked: bool) -> Result<Piece, String> {
+/// past it, which tell the layouts apart, not shown); marked for the plugin to find it ([`TEST_TV_MARK`]).
+fn glass(middle: [f32; 3], half_width: f32, half_height: f32, frame_bottom: f32) -> Result<Piece, String> {
     let source = model::source_piece(model::SCREEN)?;
     let mut colour = source.vertices.get(24..28).ok_or("the source glass has no vertex")?.to_vec();
-    if marked {
-        colour[0] = TEST_TV_MARK;
-    }
+    colour[0] = TEST_TV_MARK;
     // Across the face: `a` (+z) then `b` (+y), `a` x `b` the face's normal (-x), as the panel's boxes' faces are.
     let normal = [-1.0f32, 0.0, 0.0];
     let mut vertices = Vec::new();
@@ -356,7 +310,7 @@ mod tests {
     #[test]
     fn the_sways_tv_hangs_on_the_wall_over_the_right_door() {
         let truck = &TRUCKS[0];
-        let tv = &truck.tvs[0];
+        let tv = &TestTv::default().tv();
         let points: Vec<[f32; 3]> = in_cab(truck, tv).into_iter().flatten().collect();
         let least = |k: usize| points.iter().map(|p| p[k]).fold(f32::MAX, f32::min);
         let most = |k: usize| points.iter().map(|p| p[k]).fold(f32::MIN, f32::max);
@@ -381,10 +335,7 @@ mod tests {
         assert!((width - 1.0).abs() < 1e-4);
         // Its glass 16:9 at any size.
         assert!(((width - 2.0 * BEZEL) / (height - 2.0 * BEZEL) - 16.0 / 9.0).abs() < 1e-3);
-        // By default, the small TV's place; asked for too much, the most there is.
-        let small = &truck.tvs[0];
-        let tv = TestTv::default().tv();
-        assert_eq!((tv.wall, tv.middle, tv.width), (small.wall, small.middle, small.width));
+        // Asked for too much, the most there is.
         let tv = TestTv { x: 9.0, y: -9.0, z: 9.0, width: 0.0 }.tv();
         assert_eq!((tv.wall, tv.middle, tv.width), (1.76, [-0.6, 1.0], 0.3));
         assert!(tv.unit.len() <= 12);
@@ -407,7 +358,7 @@ mod tests {
 
     #[test]
     fn a_blanked_piece_draws_nothing_and_the_rest_stays() {
-        let mut pmg = model(&TRUCKS[0], &TRUCKS[0].tvs[0], HEIGHT).unwrap();
+        let mut pmg = model(&TRUCKS[0], &TestTv::default().tv(), HEIGHT).unwrap();
         let before = buildings::model_triangles(&pmg).unwrap();
         blank_piece(&mut pmg, 1).unwrap();
         let after = buildings::model_triangles(&pmg).unwrap();
@@ -430,47 +381,15 @@ mod tests {
     }
 
     #[test]
-    fn the_xxl_fills_the_wall_the_curtain_left() {
-        let truck = &TRUCKS[0];
-        let points: Vec<[f32; 3]> = in_cab(truck, &truck.tvs[2]).into_iter().flatten().collect();
-        let least = |k: usize| points.iter().map(|p| p[k]).fold(f32::MAX, f32::min);
-        let most = |k: usize| points.iter().map(|p| p[k]).fold(f32::MIN, f32::max);
-        // Clear of the pillar's trim, the bunk's side, the roof's curve and the door's frame.
-        assert!(least(2) >= -0.3701 && most(2) <= 0.6501, "{} {}", least(2), most(2));
-        assert!(least(1) >= 0.26 && most(1) <= 0.851, "{} {}", least(1), most(1));
-        assert!((most(0) - WALL_XL).abs() < 1e-4);
-    }
-
-    #[test]
-    fn the_xl_grows_from_the_small_ones_top_left_corner() {
-        let truck = &TRUCKS[0];
-        let corners = |tv| {
-            let points: Vec<[f32; 3]> = in_cab(truck, tv).into_iter().flatten().collect();
-            let least = |k: usize| points.iter().map(|p| p[k]).fold(f32::MAX, f32::min);
-            let most = |k: usize| points.iter().map(|p| p[k]).fold(f32::MIN, f32::max);
-            (least(2), most(2), least(1), most(1), most(0))
-        };
-        let (left, _, _, top, _) = corners(&truck.tvs[0]);
-        let (xl_left, xl_right, xl_bottom, xl_top, xl_back) = corners(&truck.tvs[1]);
-        assert!((xl_left - left).abs() < 1e-3 && (xl_top - top).abs() < 2e-3, "{xl_left} {xl_top}");
-        // Short of the bunk's side and the panel's foot, on the wall's nearest face there.
-        assert!(xl_right <= 0.44 + 1e-3 && xl_bottom >= 0.355, "{xl_right} {xl_bottom}");
-        assert!((xl_back - WALL_XL).abs() < 1e-4);
-    }
-
-    #[test]
-    fn each_tv_is_its_own_accessory_in_the_one_slot() {
-        let truck = &TRUCKS[0];
-        let [small, xl] = [&truck.tvs[0], &truck.tvs[1]].map(|tv| accessory(truck, tv));
-        assert!(small.contains("wp_tv.iveco.sway.toybed") && small.contains("price: 1500"));
-        assert!(xl.contains("wp_tv_xl.iveco.sway.toybed") && xl.contains("name: \"TruckersTV TV XL\""));
-        assert!(xl.contains("/westplay_tv_xl_iveco_sway.pmd"));
-        assert!(truck.tvs.iter().all(|tv| tv.unit.len() <= 12));
+    fn the_tv_is_sold_as_tv_under_the_first_tvs_accessory() {
+        let tv = accessory(&TRUCKS[0], &TestTv::default().tv());
+        assert!(tv.contains("wp_tv.iveco.sway.toybed") && tv.contains("name: \"TV\"") && tv.contains("price: 1500"));
+        assert!(tv.contains("/westplay_tv_iveco_sway.pmd"));
     }
 
     #[test]
     fn its_glass_faces_into_the_cab_showing_the_frame_upright() {
-        let pmg = model(&TRUCKS[0], &TRUCKS[0].tvs[0], HEIGHT).unwrap();
+        let pmg = model(&TRUCKS[0], &TestTv::default().tv(), HEIGHT).unwrap();
         // Two pieces: the panel (8 faces' worth of boxes) and the glass (one quad).
         let triangles = buildings::model_triangles(&pmg).unwrap();
         assert_eq!(triangles.len(), 2 * 6 * 2 + 2);
@@ -493,15 +412,7 @@ mod tests {
         let test = TestTv::default();
         let made = files(&game, "/s.tobj", HEIGHT, test).unwrap();
         let defs: Vec<&String> = made.iter().map(|(path, _)| path).filter(|path| path.starts_with("def/")).collect();
-        assert_eq!(
-            defs,
-            [
-                "def/vehicle/truck/iveco.sway/accessory/toybed/westplay_tv.sii",
-                "def/vehicle/truck/iveco.sway/accessory/toybed/westplay_tv_xl.sii",
-                "def/vehicle/truck/iveco.sway/accessory/toybed/westplay_tv_xxl.sii",
-                "def/vehicle/truck/iveco.sway/accessory/toybed/westplay_tv_test.sii"
-            ]
-        );
+        assert_eq!(defs, ["def/vehicle/truck/iveco.sway/accessory/toybed/westplay_tv.sii"]);
         let empty = GameFiles::new(Vec::new());
         assert!(files(&empty, "/s.tobj", HEIGHT, test).is_err());
         // Built with it, current; for a game without the truck, not (the TV to be taken out).
@@ -515,7 +426,7 @@ mod tests {
         assert!(current(&game, &built, "/s.tobj", HEIGHT, test));
         assert!(!current(&empty, &built, "/s.tobj", HEIGHT, test));
         assert!(current(&empty, &empty, "/s.tobj", HEIGHT, test));
-        // The test TV moved: made again.
+        // The TV moved: made again.
         assert!(!current(&game, &built, "/s.tobj", HEIGHT, TestTv { y: 0.1, ..test }));
         let _ = std::fs::remove_dir_all(&root);
     }

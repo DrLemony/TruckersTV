@@ -175,6 +175,8 @@ fn main() {
             let file = SettingsFile::in_dir(&config_dir);
             let shared = Arc::new(SharedSettings::new(file.load()));
             let setup = SetupStore::load(&config_dir, app.handle());
+            // The TV where it was saved, whatever the mod the game started with (made before it was saved).
+            *accounts.test_tv.lock().unwrap_or_else(|e| e.into_inner()) = Some(setup.test_tv().glass());
             setup::watch_installed_mods(&setup);
             let host = start_host(app.handle(), accounts.clone(), shared.clone(), config_dir.clone())?;
             app.manage(SettingsStore { file, shared });

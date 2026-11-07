@@ -229,6 +229,8 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
     let mut was_outside = false;
     // The players' tone (the cab's Settings › Equalizer), passed on with the cab ([`settings::SoundSettings`]).
     let mut equalizer = config.settings.get().sound.playing();
+    // How bright the screen goes out (the companion's Status), kept here: read again as the settings change.
+    let mut brightness = config.settings.get().tv.brightness.get();
     // The music's spectrum wanted by the cab (its Equalizer open): asked of the players with the cab.
     let mut spectrum = false;
     let mut pointer = Pointer::new(config.width, config.height);
@@ -293,7 +295,7 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
         // A captured frame that came before its turn goes out now that it's due.
         // The cursor drawn over it where the mouse is now.
         if let Some(pipeline) = &pipeline {
-            pipeline.capture.flush(cursor.look(Instant::now()), 1.0);
+            pipeline.capture.flush(cursor.look(Instant::now()), 1.0, brightness);
         }
         // The page told whether the host draws the cursor (it draws its own where the host can't).
         let drawn = pipeline.as_ref().is_some_and(|pipeline| pipeline.capture.draws_cursor());
@@ -463,6 +465,7 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
                 chosen_gpu = graphics.gpu;
                 adapters = graphics::adapters();
             }
+            brightness = config.settings.get().tv.brightness.get();
             let interaction = config.settings.get().interaction;
             pointer.set_sensitivity(interaction.sensitivity.get());
             host.interaction_key.store(interaction.key.virtual_key(), Ordering::Release);
