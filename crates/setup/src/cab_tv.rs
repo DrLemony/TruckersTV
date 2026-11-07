@@ -4,13 +4,14 @@
 //! texture (`westplay_shared::CAB_TV`).
 //!
 //! The game has no slot over a door, so the TV is bought as a bed toy (`toybed`, its hookup's place a fixed point in
-//! the cab) and its model is made where the wall over the door is, from that point: read from the truck's interior
-//! model (the cab's triangles round the door, [`TRUCKS`]). Only the Iveco S-Way for now (owner 2026-11-03: "start
-//! with my truck"); each truck is placed by hand from its own interior. Drawn with the camera in the cab only (an
-//! `interior_model`, no `exterior_model`).
+//! the cab) and its model is made from that point. In every truck (owner 2026-11-07: "add it to all of them"): the
+//! bed toy's point is the cab's middle across, on the bed, in every interior read (2026-11-07, the UK's mirrored),
+//! so one model, placed from the S-Way's point ([`HOOKUP`]), puts the TV in the same place on the bed's side of
+//! every cab, and the player moves it from there. Drawn with the camera in the cab only (an `interior_model`, no
+//! `exterior_model`).
 
-use westplay_mapdata::buildings;
 use westplay_mapdata::files::GameFiles;
+use westplay_mapdata::{buildings, sii};
 use westplay_shared::{SCREEN_HEIGHT, TEST_TV_MARK, TV_BEZEL_UV, TV_PANEL_VERTICES, TV_VERTEX_SIZE};
 
 use crate::model::{self, Block, Piece};
@@ -22,19 +23,11 @@ const NAME: &str = "westplay_tv";
 /// The slot it's bought at: one TV at a time, of any size.
 const SLOT: &str = "toybed";
 
-/// A truck the TV goes in: where its slot's hookup point is in the interior's model.
-struct Truck {
-    id: &'static str,
-    /// The `toybed` locator's position (its rotation none, in the trucks read).
-    hookup: [f32; 3],
-}
-
 /// The TV in the shop, and where it is (metres, the interior's axes: +x to the co-driver's side, +y up, -z to the
 /// windscreen).
 struct Tv {
-    /// Its accessory's name, the first of its unit name's parts (a token, 12 characters at the most), and its files'.
+    /// Its accessory's name, the first of its unit name's parts (a token, 12 characters at the most).
     unit: &'static str,
-    file: &'static str,
     /// As the shop shows it.
     name: &'static str,
     price: u32,
@@ -60,12 +53,17 @@ const CURTAIN_FROM: f32 = 0.1506;
 /// z -0.36 to 0.18 and y 0.40 to 0.90 (the A pillar's trim nearer the cab at -0.40, the curtain's rail behind 0.20).
 /// The TV starts there; past the rail, the `prod_std` interior's curtain is out ([`without_curtain`]) for a bigger one.
 /// shortcut: `prod_opt`'s curtain and `top_opt`'s bunk side stay, and a big TV may go through them.
-const TRUCKS: &[Truck] = &[Truck { id: "iveco.sway", hookup: [0.737_660_5, -0.482_281_54, 0.481_756_9] }];
+///
+/// The player's place is in the S-Way's cab ([`TestTv`]); its `toybed` locator's position, the point the model is made
+/// from in every truck (its rotation none).
+const HOOKUP: [f32; 3] = [0.737_660_5, -0.482_281_54, 0.481_756_9];
 
 /// The TV (owner 2026-11-07: "one TV, named TV", once the test TV): its size and place the player's, from the
-/// companion. Metres, a [`Tv`]'s axes: the wall behind it (`x`), its middle (`y`, `z`), its width (its height
-/// follows). It always faces -x. Sold under the first TV's accessory, so a truck that has that one keeps it. The game reads the model as it starts; with it running the plugin moves it where it's told
-/// ([`TestTv::glass`], the plugin's test_tv.rs), its bezel growing with it, until the next start makes it exact.
+/// companion. Metres, a [`Tv`]'s axes in the S-Way's cab: the wall behind it (`x`), its middle (`y`, `z`), its width
+/// (its height follows); other cabs have it as far from their bed toy's point. It always faces -x. Sold under the
+/// first TV's accessory, so a truck that has that one keeps it. The game reads the model as it starts; with it running
+/// the plugin moves it where it's told ([`TestTv::glass`], the plugin's test_tv.rs), its bezel growing with it, until
+/// the next start makes it exact.
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct TestTv {
@@ -87,23 +85,23 @@ impl Default for TestTv {
 }
 
 impl TestTv {
-    /// Where its glass is to be in the S-Way, for the plugin: its middle and half width, on its model's axes.
+    /// Where its glass is to be, for the plugin: its middle and half width, on its model's axes (every truck's).
     pub fn glass(self) -> [f32; 4] {
-        let (tv, hookup) = (self.tv(), TRUCKS[0].hookup);
+        let (tv, hookup) = (self.tv(), HOOKUP);
         let [y, z] = tv.middle;
         let front = tv.wall - STAND_OFF - DEPTH - GLASS_AHEAD;
         [front - hookup[0], y - hookup[1], z - hookup[2], (tv.width - 2.0 * BEZEL) / 2.0]
     }
 
-    /// As a TV in the shop, kept to the companion's sliders: within the cab, and no smaller than its bracket.
+    /// As a TV in the shop, kept to the companion's sliders (`ui/src/companion/Companion.tsx`): within the biggest
+    /// cab, and no smaller than its bracket.
     fn tv(self) -> Tv {
         Tv {
             unit: "wp_tv",
-            file: NAME,
             name: "TV",
             price: 1500,
-            wall: self.x.clamp(-1.76, 1.76),
-            middle: [self.y.clamp(-0.6, 1.0), self.z.clamp(-1.0, 1.0)],
+            wall: self.x.clamp(-2.1, 2.1),
+            middle: [self.y.clamp(-0.6, 1.3), self.z.clamp(-1.4, 1.4)],
             width: self.width.clamp(0.3, 1.6),
         }
     }
@@ -116,13 +114,46 @@ const BEZEL: f32 = 0.012;
 const STAND_OFF: f32 = 0.016;
 const GLASS_AHEAD: f32 = 0.0008;
 
-/// The trucks the TV goes in, by their folders in the game.
-pub fn trucks() -> impl Iterator<Item = &'static str> {
-    TRUCKS.iter().map(|truck| truck.id)
+/// The trucks `game` has that the TV goes in, by their folders: each with a bed toys' slot, whose interiors' bed toy
+/// point isn't turned (the model is made upright) and that has one at all where its interiors' models are read (owner
+/// 2026-11-07, read in the game: the Renault Magnum's turned, the Renault E-Tech T without one).
+pub fn trucks(game: &GameFiles) -> Vec<String> {
+    let mut models = std::collections::BTreeMap::new();
+    let mut hookup = |model: &str| -> Option<Option<[f32; 4]>> {
+        let pmg = model.trim_start_matches('/').replace(".pmd", ".pmg");
+        *models.entry(pmg).or_insert_with_key(|pmg| {
+            let bytes = game.read(pmg).ok().flatten()?;
+            let locators = buildings::model_locators(&bytes)?;
+            Some(locators.into_iter().find(|locator| locator.name == SLOT).map(|locator| locator.rotation))
+        })
+    };
+    let mut fitted = Vec::new();
+    for truck in game.dirs("def/vehicle/truck").unwrap_or_default() {
+        let has_slot = game
+            .dirs(&format!("def/vehicle/truck/{truck}/accessory"))
+            .is_ok_and(|slots| slots.iter().any(|slot| slot == SLOT));
+        if !has_slot {
+            continue;
+        }
+        let dir = format!("def/vehicle/truck/{truck}/interior");
+        let mut read = Vec::new();
+        for name in game.list(&dir).unwrap_or_default().iter().filter(|name| name.ends_with(".sii")) {
+            for unit in sii::read_units(game, &format!("{dir}/{name}")).unwrap_or_default() {
+                if let Some(model) = unit.get("model").filter(|_| unit.class == "accessory_interior_data") {
+                    read.extend(hookup(model.trim_matches('"')));
+                }
+            }
+        }
+        let upright = read.iter().flatten().all(|rotation| rotation[0].abs() > 0.999);
+        if upright && (read.is_empty() || read.iter().any(Option::is_some)) {
+            fitted.push(truck);
+        }
+    }
+    fitted
 }
 
-/// The TV's files for the trucks `game` has (none: `Err`, nothing to make): its model per truck, its materials and
-/// texture, its icon, and each truck's accessory. `screen_texture` is the `cab-tv` layout's texture object (a game
+/// The TV's files for the trucks `game` has (none: `Err`, nothing to make): its model, its materials and texture,
+/// its icon, and each truck's accessory. `screen_texture` is the `cab-tv` layout's texture object (a game
 /// path), `texture_height` its texture's height, `test` the test TV's size and place.
 pub fn files(
     game: &GameFiles,
@@ -130,13 +161,7 @@ pub fn files(
     texture_height: u32,
     test: TestTv,
 ) -> Result<Vec<(String, Vec<u8>)>, String> {
-    let trucks: Vec<&Truck> = TRUCKS
-        .iter()
-        .filter(|truck| {
-            game.dirs(&format!("def/vehicle/truck/{}/accessory", truck.id))
-                .is_ok_and(|slots| slots.iter().any(|slot| slot == SLOT))
-        })
-        .collect();
+    let trucks = trucks(game);
     if trucks.is_empty() {
         return Err("no truck the TV goes in".into());
     }
@@ -150,11 +175,10 @@ pub fn files(
         (format!("{ICON_DIR}/{NAME}.dds"), model::icon()?),
     ];
     let test = test.tv();
-    for truck in trucks {
-        let model = model_name(truck, &test);
-        files.push((format!("{DIR}/{model}.pmg"), self::model(truck, &test, texture_height)?));
-        files.push((format!("{DIR}/{model}.pmd"), model::descriptor_in(DIR)?));
-        files.push((definition_path(truck, &test), accessory(truck, &test).into_bytes()));
+    files.push((format!("{DIR}/{NAME}.pmg"), self::model(&test, texture_height)?));
+    files.push((format!("{DIR}/{NAME}.pmd"), model::descriptor_in(DIR)?));
+    for truck in &trucks {
+        files.push((definition_path(truck), accessory(truck, &test).into_bytes()));
     }
     if let Some(interior) = game.read(INTERIOR).ok().flatten().and_then(without_curtain) {
         files.push((INTERIOR.to_owned(), interior));
@@ -197,42 +221,39 @@ pub fn current(game: &GameFiles, built: &GameFiles, screen_texture: &str, textur
         .filter(|(path, _)| path.ends_with(".pmg") || path.starts_with("def/"))
         .all(|(path, bytes)| built.read(path).ok().flatten().is_some_and(|found| found == *bytes));
     // A truck the TV went in that the game no longer has (its DLC gone): made again without it.
-    let test = test.tv();
-    let none_more = TRUCKS
+    let none_more = built
+        .dirs("def/vehicle/truck")
+        .unwrap_or_default()
         .iter()
-        .map(|truck| definition_path(truck, &test))
+        .map(|truck| definition_path(truck))
         .filter(|definition| !wanted.iter().any(|(path, _)| path == definition))
         .all(|definition| built.read(&definition).ok().flatten().is_none());
     has_all && none_more
 }
 
-fn model_name(truck: &Truck, tv: &Tv) -> String {
-    format!("{}_{}", tv.file, truck.id.replace('.', "_"))
-}
-
-fn definition_path(truck: &Truck, tv: &Tv) -> String {
-    format!("def/vehicle/truck/{}/accessory/{SLOT}/{}.sii", truck.id, tv.file)
+fn definition_path(truck: &str) -> String {
+    format!("def/vehicle/truck/{truck}/accessory/{SLOT}/{NAME}.sii")
 }
 
 /// A truck's TV, defined as the game's dashboard sets are: drawn with the camera in the cab only.
-fn accessory(truck: &Truck, tv: &Tv) -> String {
-    let (id, model, Tv { unit, name, price, .. }) = (truck.id, model_name(truck, tv), tv);
+fn accessory(truck: &str, tv: &Tv) -> String {
+    let Tv { unit, name, price, .. } = tv;
     format!(
-        "SiiNunit\n{{\naccessory_addon_data : {unit}.{id}.{SLOT}\n{{\n\tname: \"{name}\"\n\tprice: {price}\n\tunlock: 0\n\ticon: \"{NAME}\"\n\tpart_type: aftermarket\n\n\tinterior_model: \"/{DIR}/{model}.pmd\"\n}}\n}}\n"
+        "SiiNunit\n{{\naccessory_addon_data : {unit}.{truck}.{SLOT}\n{{\n\tname: \"{name}\"\n\tprice: {price}\n\tunlock: 0\n\ticon: \"{NAME}\"\n\tpart_type: aftermarket\n\n\tinterior_model: \"/{DIR}/{NAME}.pmd\"\n}}\n}}\n"
     )
 }
 
-/// `tv`'s model for `truck`, from its slot's hookup point: the panel and its bracket (the source body's
+/// `tv`'s model, from the bed toys' hookup point ([`HOOKUP`]): the panel and its bracket (the source body's
 /// material, black) and the glass, facing into the cab (-x), showing the texture's first SCREEN_HEIGHT rows (of
 /// `texture_height`), the first at its top, the frame's left toward the windscreen (-z) as the player sees it.
-fn model(truck: &Truck, tv: &Tv, texture_height: u32) -> Result<Vec<u8>, String> {
+fn model(tv: &Tv, texture_height: u32) -> Result<Vec<u8>, String> {
     let glass_width = tv.width - 2.0 * BEZEL;
     let height = glass_width * 9.0 / 16.0 + 2.0 * BEZEL;
     let [y, z] = tv.middle;
     let back = tv.wall - STAND_OFF;
     let front = back - DEPTH;
     // Points from the cab's axes to the model's: the hookup's rotation is none.
-    let from_hookup = |p: [f32; 3]| [0, 1, 2].map(|k| p[k] - truck.hookup[k]);
+    let from_hookup = |p: [f32; 3]| [0, 1, 2].map(|k| p[k] - HOOKUP[k]);
     let axes = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
     let span = |low: [f32; 3], high: [f32; 3]| -> Block {
         (from_hookup([0, 1, 2].map(|k| (low[k] + high[k]) / 2.0)), axes, [0, 1, 2].map(|k| (high[k] - low[k]) / 2.0))
@@ -298,20 +319,19 @@ mod tests {
     const HEIGHT: u32 = SCREEN_HEIGHT + 14;
 
     /// The model's triangles, each corner back in the cab's axes.
-    fn in_cab(truck: &Truck, tv: &Tv) -> Vec<[[f32; 3]; 3]> {
-        let pmg = model(truck, tv, HEIGHT).unwrap();
+    fn in_cab(tv: &Tv) -> Vec<[[f32; 3]; 3]> {
+        let pmg = model(tv, HEIGHT).unwrap();
         buildings::model_triangles(&pmg)
             .unwrap()
             .into_iter()
-            .map(|triangle| triangle.map(|p| [0, 1, 2].map(|k| p[k] + truck.hookup[k])))
+            .map(|triangle| triangle.map(|p| [0, 1, 2].map(|k| p[k] + HOOKUP[k])))
             .collect()
     }
 
     #[test]
     fn the_sways_tv_hangs_on_the_wall_over_the_right_door() {
-        let truck = &TRUCKS[0];
         let tv = &TestTv::default().tv();
-        let points: Vec<[f32; 3]> = in_cab(truck, tv).into_iter().flatten().collect();
+        let points: Vec<[f32; 3]> = in_cab(tv).into_iter().flatten().collect();
         let least = |k: usize| points.iter().map(|p| p[k]).fold(f32::MAX, f32::min);
         let most = |k: usize| points.iter().map(|p| p[k]).fold(f32::MIN, f32::max);
         // Against the wall, never through it; within the panel over the door, clear of the pillar and the rail.
@@ -323,9 +343,8 @@ mod tests {
 
     #[test]
     fn the_test_tv_goes_where_it_is_told_keeping_its_shape() {
-        let truck = &TRUCKS[0];
         let size = |test: TestTv| {
-            let points: Vec<[f32; 3]> = in_cab(truck, &test.tv()).into_iter().flatten().collect();
+            let points: Vec<[f32; 3]> = in_cab(&test.tv()).into_iter().flatten().collect();
             let least = |k: usize| points.iter().map(|p| p[k]).fold(f32::MAX, f32::min);
             let most = |k: usize| points.iter().map(|p| p[k]).fold(f32::MIN, f32::max);
             (most(0), (least(1) + most(1)) / 2.0, (least(2) + most(2)) / 2.0, most(2) - least(2), most(1) - least(1))
@@ -337,15 +356,14 @@ mod tests {
         assert!(((width - 2.0 * BEZEL) / (height - 2.0 * BEZEL) - 16.0 / 9.0).abs() < 1e-3);
         // Asked for too much, the most there is.
         let tv = TestTv { x: 9.0, y: -9.0, z: 9.0, width: 0.0 }.tv();
-        assert_eq!((tv.wall, tv.middle, tv.width), (1.76, [-0.6, 1.0], 0.3));
+        assert_eq!((tv.wall, tv.middle, tv.width), (2.1, [-0.6, 1.4], 0.3));
         assert!(tv.unit.len() <= 12);
     }
 
     #[test]
     fn the_plugin_is_told_where_the_model_has_the_test_tv_s_glass() {
-        let truck = &TRUCKS[0];
         let test = TestTv { x: 1.2, y: 0.3, z: 0.1, width: 1.0 };
-        let pmg = model(truck, &test.tv(), HEIGHT).unwrap();
+        let pmg = model(&test.tv(), HEIGHT).unwrap();
         let triangles = buildings::model_triangles(&pmg).unwrap();
         let corners: Vec<[f32; 3]> = triangles[triangles.len() - 2..].iter().flatten().copied().collect();
         let least = |k: usize| corners.iter().map(|p| p[k]).fold(f32::MAX, f32::min);
@@ -358,7 +376,7 @@ mod tests {
 
     #[test]
     fn a_blanked_piece_draws_nothing_and_the_rest_stays() {
-        let mut pmg = model(&TRUCKS[0], &TestTv::default().tv(), HEIGHT).unwrap();
+        let mut pmg = model(&TestTv::default().tv(), HEIGHT).unwrap();
         let before = buildings::model_triangles(&pmg).unwrap();
         blank_piece(&mut pmg, 1).unwrap();
         let after = buildings::model_triangles(&pmg).unwrap();
@@ -366,6 +384,20 @@ mod tests {
         let glass = before.len() - 2;
         assert_eq!(after[..glass], before[..glass]);
         assert!(after[glass..].iter().all(|[a, b, c]| a == b && b == c));
+    }
+
+    #[test]
+    #[ignore = "reads the installed game"]
+    fn goes_in_the_game_s_trucks_but_those_with_a_turned_or_no_bed_toy() {
+        let game = crate::game::find().into_iter().next().expect("the game installed");
+        let files = GameFiles::install(&game.dir).unwrap();
+        let started = std::time::Instant::now();
+        let fitted = trucks(&files);
+        println!("{} trucks in {:?}: {fitted:?}", fitted.len(), started.elapsed());
+        assert!(
+            fitted.iter().any(|truck| truck == "iveco.sway") && fitted.iter().any(|truck| truck == "scania.s_2016")
+        );
+        assert!(!fitted.iter().any(|truck| truck == "renault.magnum" || truck == "renault.etech_t"));
     }
 
     #[test]
@@ -382,14 +414,14 @@ mod tests {
 
     #[test]
     fn the_tv_is_sold_as_tv_under_the_first_tvs_accessory() {
-        let tv = accessory(&TRUCKS[0], &TestTv::default().tv());
+        let tv = accessory("iveco.sway", &TestTv::default().tv());
         assert!(tv.contains("wp_tv.iveco.sway.toybed") && tv.contains("name: \"TV\"") && tv.contains("price: 1500"));
-        assert!(tv.contains("/westplay_tv_iveco_sway.pmd"));
+        assert!(tv.contains("interior_model: \"/vehicle/truck/upgrade/westplay_tv/westplay_tv.pmd\""));
     }
 
     #[test]
     fn its_glass_faces_into_the_cab_showing_the_frame_upright() {
-        let pmg = model(&TRUCKS[0], &TestTv::default().tv(), HEIGHT).unwrap();
+        let pmg = model(&TestTv::default().tv(), HEIGHT).unwrap();
         // Two pieces: the panel (8 faces' worth of boxes) and the glass (one quad).
         let triangles = buildings::model_triangles(&pmg).unwrap();
         assert_eq!(triangles.len(), 2 * 6 * 2 + 2);
@@ -408,6 +440,8 @@ mod tests {
         let accessory = root.join("def/vehicle/truck/iveco.sway/accessory/toybed");
         std::fs::create_dir_all(&accessory).unwrap();
         std::fs::write(accessory.join("x.sii"), "").unwrap();
+        // A truck without a bed toys' slot: no TV.
+        std::fs::create_dir_all(root.join("def/vehicle/truck/bus/accessory/toyseat")).unwrap();
         let game = GameFiles::new(vec![westplay_mapdata::files::Mount::Folder(root.clone())]);
         let test = TestTv::default();
         let made = files(&game, "/s.tobj", HEIGHT, test).unwrap();

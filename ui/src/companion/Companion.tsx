@@ -478,9 +478,9 @@ function useInstall(dir: string | undefined, installed: () => void) {
 /** The TV's sliders, in metres, as the app keeps them (`TestTv::tv`). */
 const TEST_TV_SLIDERS = [
   { id: 'width', min: 0.3, max: 1.6 },
-  { id: 'z', min: -1, max: 1 },
-  { id: 'y', min: -0.6, max: 1 },
-  { id: 'x', min: -1.76, max: 1.76 },
+  { id: 'z', min: -1.4, max: 1.4 },
+  { id: 'y', min: -0.6, max: 1.3 },
+  { id: 'x', min: -2.1, max: 2.1 },
 ] as const
 
 /** The TV's size and place: it follows the sliders in the running game, and they're kept once saved. */

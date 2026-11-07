@@ -126,11 +126,16 @@ unsafe fn find(context: &ID3D11DeviceContext, buffer: &ID3D11Buffer, glass_at: u
     let from = glass_at.saturating_sub(PANEL_WITHIN);
     // SAFETY: as above.
     let near = unsafe { read(context, buffer, from, glass_at - from + size + PANEL_WITHIN) }.unwrap_or_default();
-    match find_panel(&near) {
+    let corners: Vec<[f32; 3]> = glass.chunks_exact(TV_VERTEX_SIZE).map(position).collect();
+    let middle = [1, 2].map(|axis| corners.iter().map(|corner| corner[axis]).sum::<f32>() / corners.len() as f32);
+    match find_panel(&near, (glass_at - from) as usize, middle) {
         Some(at) => {
             placed.panel_at = from + at as u32;
             placed.panel = near[at..at + TV_PANEL_VERTICES * TV_VERTEX_SIZE].to_vec();
-            log!("test TV: found, its glass at vertex {base}, its panel {} bytes from it", glass_at as i64 - placed.panel_at as i64);
+            log!(
+                "test TV: found, its glass at vertex {base}, its panel {} bytes from it",
+                glass_at as i64 - placed.panel_at as i64
+            );
         }
         None => log!("test TV: found, its glass at vertex {base}, no panel near it: the glass alone moves"),
     }
@@ -143,13 +148,28 @@ fn is_test_glass(glass: &[u8]) -> bool {
         && glass.chunks_exact(TV_VERTEX_SIZE).all(|vertex| vertex[COLOUR_AT] == TEST_TV_MARK)
 }
 
-/// Where in `near` the panel's vertices are: as many in a row as it has, all of the bezel's look.
-fn find_panel(near: &[u8]) -> Option<usize> {
+/// Where in `near` the panel's vertices are: as many in a row as it has, all of the bezel's look, round the glass's
+/// middle (`[y, z]`), and of those the nearest to the glass (at `glass_in`): the buffer may still hold a TV the game
+/// loaded before (seen 2026-11-07: one 4032 bytes back, the panel 1944).
+fn find_panel(near: &[u8], glass_in: usize, middle: [f32; 2]) -> Option<usize> {
     let is_bezel = |at: usize| {
         let uv = near.get(at + UV_AT..at + TV_VERTEX_SIZE);
         uv.is_some_and(|uv| uv[..4] == TV_BEZEL_UV[0].to_le_bytes() && uv[4..] == TV_BEZEL_UV[1].to_le_bytes())
     };
-    (0..near.len()).step_by(4).find(|at| (0..TV_PANEL_VERTICES).all(|vertex| is_bezel(at + vertex * TV_VERTEX_SIZE)))
+    let round_glass = |at: usize| {
+        let corners = near[at..at + TV_PANEL_VERTICES * TV_VERTEX_SIZE].chunks_exact(TV_VERTEX_SIZE).map(position);
+        let (low, high) = corners.fold(([f32::MAX; 2], [f32::MIN; 2]), |(low, high), [_, y, z]| {
+            ([low[0].min(y), low[1].min(z)], [high[0].max(y), high[1].max(z)])
+        });
+        (0..2).all(|axis| low[axis] <= middle[axis] && middle[axis] <= high[axis])
+    };
+    (0..near.len())
+        .step_by(4)
+        .filter(|&at| (0..TV_PANEL_VERTICES).all(|vertex| is_bezel(at + vertex * TV_VERTEX_SIZE)))
+        // A run's start, not a vertex into it.
+        .filter(|&at| at < TV_VERTEX_SIZE || !is_bezel(at - TV_VERTEX_SIZE))
+        .filter(|&at| round_glass(at))
+        .min_by_key(|&at| at.abs_diff(glass_in))
 }
 
 fn position(vertex: &[u8]) -> [f32; 3] {
@@ -249,9 +269,18 @@ mod tests {
             .collect()
     }
 
-    /// The panel: every vertex at its corner, just past the glass.
+    /// The panel round the glass, just past it: its vertices at its two corners in turn, `shift` along z.
+    fn panel_at(shift: f32) -> Vec<u8> {
+        (0..TV_PANEL_VERTICES)
+            .flat_map(|vertex| {
+                let [y, z] = if vertex % 2 == 0 { [1.4, 1.9] } else { [2.6, 4.1] };
+                self::vertex([1.1, y, z + shift], 0x80, TV_BEZEL_UV)
+            })
+            .collect()
+    }
+
     fn panel() -> Vec<u8> {
-        (0..TV_PANEL_VERTICES).flat_map(|_| vertex([1.1, 1.4, 1.9], 0x80, TV_BEZEL_UV)).collect()
+        panel_at(0.0)
     }
 
     #[test]
@@ -272,9 +301,25 @@ mod tests {
     fn finds_the_panel_near_the_glass_at_any_alignment() {
         let mut near = vec![0u8; 100];
         near.extend(panel());
+        let glass_in = near.len();
         near.extend(glass(TEST_TV_MARK));
-        assert_eq!(find_panel(&near), Some(100));
-        assert_eq!(find_panel(&near[..near.len() - TV_GLASS_VERTICES * TV_VERTEX_SIZE - TV_VERTEX_SIZE]), None);
+        assert_eq!(find_panel(&near, glass_in, [2.0, 3.0]), Some(100));
+        assert_eq!(find_panel(&near[..glass_in - TV_VERTEX_SIZE], glass_in, [2.0, 3.0]), None);
+    }
+
+    #[test]
+    fn takes_the_glass_s_own_panel_over_one_left_from_before() {
+        // One moved away, then one as loaded but farther: neither is the glass's.
+        let mut near = panel_at(10.0);
+        near.extend([0u8; 40]);
+        near.extend(panel());
+        near.extend([0u8; 200]);
+        let own = near.len();
+        near.extend(panel());
+        near.extend([0u8; 180]);
+        let glass_in = near.len();
+        near.extend(glass(TEST_TV_MARK));
+        assert_eq!(find_panel(&near, glass_in, [2.0, 3.0]), Some(own));
     }
 
     #[test]

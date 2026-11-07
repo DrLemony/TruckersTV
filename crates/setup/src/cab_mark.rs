@@ -17,7 +17,6 @@ use westplay_mapdata::archive::Archive;
 use westplay_mapdata::files::{GameFiles, Mount};
 use westplay_mapdata::sii;
 
-
 /// The mark's texture's name, beside the screens' (`game_mod::SCREEN_DIR`).
 pub(crate) const TEXTURE: &str = "cab_mark";
 /// The dashboard scripts the mod has the mark in, a path a line: what [`current`] compares.
@@ -42,7 +41,8 @@ impl Marks {
 /// The marks for the trucks the TV goes in, their dashboard scripts read from `game` and `mods` (the installed mods'
 /// files, archives or folders, active in a profile or not).
 pub fn for_tv(game: &GameFiles, mods: &[PathBuf]) -> Marks {
-    let trucks: BTreeSet<&str> = crate::cab_tv::trucks().collect();
+    let trucks = crate::cab_tv::trucks(game);
+    let trucks: BTreeSet<&str> = trucks.iter().map(String::as_str).collect();
     let mods: Vec<GameFiles> = mods.iter().filter_map(|path| mounted(path)).collect();
     marks(game, &mods, &trucks)
 }

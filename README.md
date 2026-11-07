@@ -17,7 +17,7 @@
 
 <p align="center"><img src="docs/images/home.png" width="820" alt="TruckersTV's home screen"></p>
 
-> **Beta.** Expect rough edges, and for now the TV only fits the Iveco S-Way. Bugs and ideas are welcome in [Issues](https://github.com/DrLemony/TruckersTV/issues).
+> **Beta.** Expect rough edges, and the TV goes in every truck of the game but the Renault Magnum and the Renault E-Tech T. Bugs and ideas are welcome in [Issues](https://github.com/DrLemony/TruckersTV/issues).
 
 ## Download
 
@@ -27,12 +27,12 @@ Get the installer from the [latest release](https://github.com/DrLemony/Truckers
 
 TruckersTV is a Windows app and a game plugin. The TV is bought in the game's own truck shop, under *Bed toys*, as "TV" (1500 €). Its size and place in the cab are set from the TruckersTV window, live while the game runs, and kept. It is drawn into the cab, and the truck's own screens stay the game's. There's no mod to install by hand, so it also runs under TruckersMP.
 
-For now the TV is placed in the Iveco S-Way, over the right door.
+It starts on the cab's right-hand wall, by the bed (in the Iveco S-Way, over the right door), and you move it from there: each cab is a little different.
 
 ## Using it
 
 1. Open TruckersTV before the game and go through its setup.
-2. In the game, drive the Iveco S-Way into a truck dealer and buy the **TV** under *Accessories › Bed toys*. Its size and place are set on the TV page of the TruckersTV window: press *Save* to keep them.
+2. In the game, drive your truck into a truck dealer and buy the **TV** under *Accessories › Bed toys*. Its size and place are set on the TV page of the TruckersTV window: press *Save* to keep them.
 
    <img src="docs/images/shop.webp" width="700" alt="The TV in the truck shop, under Bed toys">
 
@@ -57,7 +57,7 @@ The companion app on the PC shows the TV's state, its keys and your accounts:
 
 ## Türkçe
 
-TruckersTV, Euro Truck Simulator 2'de tırın kabinine televizyon koyar: YouTube, müzik, canlı TV, tarayıcı ve kendi videoların, Android TV tarzı bir ana ekranla. Şu an beta ve yalnızca Iveco S-Way'de çalışıyor; TruckersMP ile uyumlu.
+TruckersTV, Euro Truck Simulator 2'de tırın kabinine televizyon koyar: YouTube, müzik, canlı TV, tarayıcı ve kendi videoların, Android TV tarzı bir ana ekranla. Şu an beta ve Renault Magnum ve Renault E-Tech T dışındaki bütün tırlarda çalışıyor; TruckersMP ile uyumlu.
 
 [Son sürümden](https://github.com/DrLemony/TruckersTV/releases) kurulum dosyasını indir ve çalıştır, sonra oyundan önce TruckersTV'yi aç. Televizyonu oyunda tır galerisinden, *Aksesuarlar › Yatak Eşyaları* altından **TV** adıyla satın alırsın (yukarıdaki resim). Boyutunu ve yerini oyun açıkken TruckersTV penceresinden değiştirip kaydedebilirsin. Windows uyarı verirse *Ek bilgi*, ardından *Yine de çalıştır*'a bas.
 
