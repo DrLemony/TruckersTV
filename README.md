@@ -69,6 +69,16 @@ npm run build:release --prefix ui
 cargo build --release -p westplay-app -p westplay-plugin --features tauri/custom-protocol
 ```
 
+The installers are built from this repository by the [release workflow](.github/workflows/release.yml).
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
+- Committers and approvers: [DrLemony](https://github.com/DrLemony)
+
+Privacy: TruckersTV sends nothing to any server on its own. It only opens the sites and services you choose in it.
+
 ## License
 
 [GPL-3.0-or-later](LICENSE). Euro Truck Simulator 2 is a trademark of SCS Software. TruckersTV isn't affiliated with SCS Software, TruckersMP, Google or the services it opens. Android TV is a trademark of Google, named only to describe the look.

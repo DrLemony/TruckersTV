@@ -1,0 +1,85 @@
+# The installer, built from the repository alone. Signed through SignPath Foundation once the repository's
+# SIGNPATH_ORGANIZATION_ID and SIGNPATH_PROJECT_SLUG variables and SIGNPATH_API_TOKEN secret are set; unsigned till then.
+name: Release build
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      WESTPLAY_RELEASE: '1'
+      SIGN: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            ui/package-lock.json
+
+      - run: rustup toolchain install stable --profile minimal && rustup default stable
+
+      - run: npm ci
+      - run: npm ci --prefix ui
+      - run: cargo build --release -p westplay-plugin
+      - run: npx tauri build --config app/tauri.release.conf.json --no-bundle
+
+      # The app and the plugin are signed before they go into the installer, and the installer after.
+      - name: Upload the app and the plugin for signing
+        id: binaries
+        if: env.SIGN == 'true'
+        uses: actions/upload-artifact@v5
+        with:
+          name: binaries-unsigned
+          path: |
+            target/release/truckerstv.exe
+            target/release/truckerstv.dll
+      - name: Sign the app and the plugin
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: release-signing
+          artifact-configuration-slug: binaries
+          github-artifact-id: ${{ steps.binaries.outputs.artifact-id }}
+          output-artifact-directory: target/release
+
+      # No patching: it would rewrite the signed app (only one kind of installer is made anyway).
+      - run: npx tauri bundle --config app/tauri.release.conf.json --bundles nsis --no-binary-patching
+
+      - name: Upload the installer for signing
+        id: installer
+        if: env.SIGN == 'true'
+        uses: actions/upload-artifact@v5
+        with:
+          name: installer-unsigned
+          path: target/release/bundle/nsis/TruckersTV_*_x64-setup.exe
+      - name: Sign the installer
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: release-signing
+          artifact-configuration-slug: installer
+          github-artifact-id: ${{ steps.installer.outputs.artifact-id }}
+          output-artifact-directory: target/release/bundle/nsis
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: TruckersTV-setup
+          path: target/release/bundle/nsis/TruckersTV_*_x64-setup.exe
